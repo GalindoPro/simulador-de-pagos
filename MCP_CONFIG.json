@@ -1,0 +1,38 @@
+{
+  "_descripcion": "Configuración MCP para Claude Desktop — acceso directo al proyecto Capital Pro",
+  "_instrucciones": [
+    "1. Instala Claude Desktop: https://claude.ai/download",
+    "2. Instala Node.js: https://nodejs.org",
+    "3. Abre Claude Desktop → Settings → Developer → Edit Config",
+    "4. Reemplaza TU_RUTA con la ruta real de tu proyecto",
+    "5. Guarda y reinicia Claude Desktop",
+    "6. El ícono de herramientas aparecerá en el chat cuando esté activo"
+  ],
+
+  "mcpServers": {
+    "capital-pro-archivos": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@modelcontextprotocol/server-filesystem",
+        "TU_RUTA/capital_pro"
+      ],
+      "_ejemplo_windows": "C:\\Users\\ruben\\Documents\\proyectos\\capital_pro",
+      "_ejemplo_mac_linux": "/Users/ruben/proyectos/capital_pro",
+      "_que_permite": [
+        "Leer cualquier archivo del proyecto: @CLAUDE.md lee lib/models/cliente.dart",
+        "Escribir archivos directamente: 'Escribe el repositorio de pagos en lib/repositories/'",
+        "Listar carpetas: '¿Qué archivos hay en lib/screens/?'",
+        "Revisar imports: 'Revisa todos los providers y dime si hay errores'"
+      ]
+    }
+  },
+
+  "_comandos_utiles_con_mcp": [
+    "Lee CAPITAL_PRO_CONTEXT.md y luego genera el módulo de Clientes completo",
+    "Lee lib/models/prestamo.dart y crea el repositorio correspondiente",
+    "Revisa lib/screens/dashboard/ y completa el dashboard con gráficas fl_chart",
+    "Escribe el formulario de nuevo préstamo con preview en tiempo real en lib/screens/prestamos/form_prestamo_screen.dart",
+    "Lee lib/core/services/carpeta_service.dart y genera el botón de compartir PDF por WhatsApp"
+  ]
+}
