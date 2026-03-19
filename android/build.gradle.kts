@@ -16,6 +16,13 @@ subprojects {
                 }
             }
         }
+        if (plugins.hasPlugin("org.jetbrains.kotlin.android")) {
+            extensions.configure<org.jetbrains.kotlin.gradle.dsl.KotlinAndroidProjectExtension> {
+                compilerOptions {
+                    jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+                }
+            }
+        }
     }
 }
 

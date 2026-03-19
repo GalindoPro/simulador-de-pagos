@@ -133,6 +133,29 @@ class PagoRepository {
     return (result.first['total'] as num).toDouble();
   }
 
+  Future<double> sumarInteresesTotales(String usuarioId) async {
+    final db = await _db.database;
+    final result = await db.rawQuery(
+      '''
+      SELECT COALESCE(SUM(tp.interes), 0) as total
+      FROM pagos p
+      INNER JOIN tabla_pagos tp ON p.prestamo_id = tp.prestamo_id AND p.cuota_numero = tp.cuota_numero
+      WHERE p.estado = 'completado' AND p.registrado_por = ?
+      ''',
+      [usuarioId],
+    );
+    return (result.first['total'] as num).toDouble();
+  }
+
+  Future<double> sumarCobradoTotal(String usuarioId) async {
+    final db = await _db.database;
+    final result = await db.rawQuery(
+      "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE estado = 'completado' AND registrado_por = ?",
+      [usuarioId],
+    );
+    return (result.first['total'] as num).toDouble();
+  }
+
   Future<Map<String, double>> pagosPorMes(int meses, String usuarioId) async {
     final db = await _db.database;
     final resultado = <String, double>{};

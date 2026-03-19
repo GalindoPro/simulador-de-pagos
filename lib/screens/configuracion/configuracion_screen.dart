@@ -11,7 +11,9 @@ import '../../providers/cliente_provider.dart';
 import '../../providers/prestamo_provider.dart';
 import '../../providers/pago_provider.dart';
 import '../../router/app_routes.dart';
+import 'package:file_picker/file_picker.dart';
 import '../../services/carpeta_service.dart';
+import '../../services/database_helper.dart';
 import '../../widgets/app_snack_bar.dart';
 import '../../widgets/cliente_avatar.dart';
 import '../../widgets/confirm_dialog.dart';
@@ -154,6 +156,15 @@ class ConfiguracionScreen extends ConsumerWidget {
                     onTap: () {
                       CarpetaService.instance.compartirBaseDatos();
                     },
+                  ),
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.download, color: AppColors.primary),
+                    title: const Text('Importar Base de Datos'),
+                    subtitle: const Text(
+                        'Restaurar datos desde otro dispositivo'),
+                    trailing: const Icon(Icons.folder_open),
+                    onTap: () => _importarBaseDatos(context, ref),
                   ),
                 ],
               ),
@@ -476,5 +487,55 @@ class ConfiguracionScreen extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  void _importarBaseDatos(BuildContext context, WidgetRef ref) async {
+    final confirm = await ConfirmDialog.show(
+      context,
+      titulo: 'Importar Base de Datos',
+      mensaje:
+          '¿Estás seguro? Esto reemplazará todos los datos actuales con los del archivo importado. '
+          'Se recomienda exportar un respaldo antes de continuar.',
+      textoConfirmar: 'Importar',
+    );
+    if (!confirm || !context.mounted) return;
+
+    try {
+      final result = await FilePicker.platform.pickFiles(
+        type: FileType.any,
+        allowMultiple: false,
+      );
+
+      if (result == null || result.files.single.path == null) return;
+
+      final filePath = result.files.single.path!;
+      if (!filePath.endsWith('.db')) {
+        if (context.mounted) {
+          AppSnackBar.error(
+              context, 'Archivo inválido. Selecciona un archivo .db');
+        }
+        return;
+      }
+
+      await DatabaseHelper.instance.importarBaseDatos(filePath);
+
+      // Reload session and invalidate all providers
+      await ref.read(sesionActualProvider.notifier).cargarSesion();
+      ref.invalidate(clientesProvider);
+      ref.invalidate(prestamosProvider);
+      ref.invalidate(pagosProvider);
+      ref.invalidate(resumenFinancieroProvider);
+      ref.invalidate(resumenPagosProvider);
+      ref.invalidate(capitalDisponibleProvider);
+
+      if (context.mounted) {
+        AppSnackBar.exito(context, 'Base de datos importada correctamente');
+        context.go(AppRoutes.login);
+      }
+    } catch (e) {
+      if (context.mounted) {
+        AppSnackBar.error(context, 'Error al importar: $e');
+      }
+    }
   }
 }

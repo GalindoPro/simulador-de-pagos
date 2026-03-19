@@ -43,8 +43,15 @@ class _DetallePagoScreenState extends ConsumerState<DetallePagoScreen> {
                 .obtenerCuotaActual(pago.prestamoId!)
             : null;
 
+        final cuotasPendientes = pago.prestamoId != null
+            ? await ref
+                .read(prestamoRepositoryProvider)
+                .contarCuotasPendientes(pago.prestamoId!)
+            : 0;
+
         path = await CarpetaService.instance
-            .generarReciboPago(pago, cliente, cuota, prestamo);
+            .generarReciboPago(pago, cliente, cuota, prestamo,
+                cuotasPendientes: cuotasPendientes);
 
         await ref
             .read(pagosProvider.notifier)

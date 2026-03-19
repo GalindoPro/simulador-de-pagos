@@ -1,3 +1,4 @@
+import 'dart:io';
 import 'package:sqflite/sqflite.dart';
 import 'package:path/path.dart';
 
@@ -158,5 +159,25 @@ class DatabaseHelper {
     final db = await database;
     db.close();
     _database = null;
+  }
+
+  Future<String> get dbPath async {
+    final dbDir = await getDatabasesPath();
+    return join(dbDir, 'capital_pro.db');
+  }
+
+  Future<void> importarBaseDatos(String sourcePath) async {
+    // Close current connection
+    if (_database != null) {
+      await _database!.close();
+      _database = null;
+    }
+
+    final destPath = await dbPath;
+    final sourceFile = File(sourcePath);
+    await sourceFile.copy(destPath);
+
+    // Reopen with migration support
+    _database = await _initDB();
   }
 }

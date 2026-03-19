@@ -234,8 +234,15 @@ class _PagosScreenState extends ConsumerState<PagosScreen> {
               .obtenerCuotaActual(pago.prestamoId!)
           : null;
 
+      final cuotasPendientes = pago.prestamoId != null
+          ? await ref
+              .read(prestamoRepositoryProvider)
+              .contarCuotasPendientes(pago.prestamoId!)
+          : 0;
+
       final path = await CarpetaService.instance
-          .generarReciboPago(pago, cliente, cuota, prestamo);
+          .generarReciboPago(pago, cliente, cuota, prestamo,
+              cuotasPendientes: cuotasPendientes);
 
       // Guardar ruta del PDF
       await ref

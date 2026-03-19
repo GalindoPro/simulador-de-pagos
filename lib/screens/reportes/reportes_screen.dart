@@ -7,6 +7,7 @@ import '../../constants/app_strings.dart';
 import '../../constants/app_text_styles.dart';
 import '../../helpers/app_formatters.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/resumen_financiero.dart';
 import '../../providers/prestamo_provider.dart';
 import '../../router/app_routes.dart';
 import '../../services/carpeta_service.dart';
@@ -123,6 +124,10 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               ),
               const SizedBox(height: 16),
 
+              // Capital section
+              _buildCapitalCard(r),
+              const SizedBox(height: 16),
+
               // KPI cards
               Row(
                 children: [
@@ -132,6 +137,7 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                       valor: AppFormatters.moneda(r.totalCobradoMes),
                       icono: Icons.trending_up,
                       color: AppColors.success,
+                      subtitulo: 'Este mes',
                     ),
                   ),
                   Expanded(
@@ -140,6 +146,27 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
                       valor: AppFormatters.moneda(r.totalPrestado),
                       icono: Icons.account_balance,
                       color: AppColors.primary,
+                    ),
+                  ),
+                ],
+              ),
+              Row(
+                children: [
+                  Expanded(
+                    child: StatCard(
+                      titulo: 'Ganancias totales',
+                      valor: AppFormatters.moneda(r.interesesTotales),
+                      icono: Icons.savings,
+                      color: Colors.teal,
+                    ),
+                  ),
+                  Expanded(
+                    child: StatCard(
+                      titulo: AppStrings.interesDelMes,
+                      valor: AppFormatters.moneda(r.interesDelMes),
+                      icono: Icons.percent,
+                      color: Colors.deepPurple,
+                      subtitulo: 'Este mes',
                     ),
                   ),
                 ],
@@ -166,24 +193,8 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Gráfica comparativa Ingresos vs Préstamos
-              Text(AppStrings.ingresosVsPrestamos,
-                  style: AppTextStyles.titleMedium),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  _legendItem(AppColors.success, AppStrings.ingresos),
-                  const SizedBox(width: 24),
-                  _legendItem(AppColors.primary, AppStrings.prestadoMes),
-                ],
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: 220,
-                child: _buildGroupedBarChart(
-                    r.pagosPorMes, r.prestamosPorMes),
-              ),
+              // Gráfica circular - Distribución de capital
+              _buildPieChartCard(r),
               const SizedBox(height: 24),
 
               // Gráfica de barras cobros
@@ -230,109 +241,206 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     );
   }
 
-  Widget _legendItem(Color color, String label) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 14,
-          height: 14,
-          decoration: BoxDecoration(
-            color: color,
-            borderRadius: BorderRadius.circular(3),
-          ),
+  Widget _buildCapitalCard(ResumenFinanciero r) {
+    final usuario = ref.watch(sesionActualProvider);
+    final capitalInicial = usuario?.capitalInicial ?? 0;
+    final capitalDisp = capitalInicial - r.saldoPendiente;
+    final capitalConGanancias = capitalInicial + r.interesesTotales;
+    final porcentajeInvertido =
+        capitalInicial > 0 ? (r.saldoPendiente / capitalInicial * 100) : 0.0;
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(Icons.account_balance_wallet,
+                    color: AppColors.primary, size: 22),
+                const SizedBox(width: 8),
+                Text('Resumen de Capital', style: AppTextStyles.titleMedium),
+              ],
+            ),
+            const Divider(height: 20),
+            _capitalRow(
+              'Capital inicial',
+              AppFormatters.moneda(capitalInicial),
+              Icons.flag,
+              AppColors.primary,
+            ),
+            _capitalRow(
+              AppStrings.capitalDisponible,
+              AppFormatters.moneda(capitalDisp),
+              Icons.account_balance,
+              capitalDisp > 0 ? AppColors.success : AppColors.error,
+            ),
+            _capitalRow(
+              'Capital invertido',
+              AppFormatters.moneda(r.saldoPendiente),
+              Icons.trending_up,
+              Colors.orange,
+            ),
+            _capitalRow(
+              'Capital + Ganancias',
+              AppFormatters.moneda(capitalConGanancias),
+              Icons.emoji_events,
+              Colors.teal,
+            ),
+            const SizedBox(height: 8),
+            // Barra de progreso de capital invertido
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Capital invertido: ${porcentajeInvertido.toStringAsFixed(1)}%',
+                  style: AppTextStyles.labelSmall,
+                ),
+                const SizedBox(height: 4),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(4),
+                  child: LinearProgressIndicator(
+                    value: capitalInicial > 0
+                        ? (r.saldoPendiente / capitalInicial).clamp(0.0, 1.0)
+                        : 0,
+                    minHeight: 8,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      porcentajeInvertido > 90
+                          ? AppColors.error
+                          : porcentajeInvertido > 70
+                              ? Colors.orange
+                              : AppColors.success,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-        const SizedBox(width: 6),
-        Text(label, style: AppTextStyles.labelSmall),
-      ],
+      ),
     );
   }
 
-  Widget _buildGroupedBarChart(
-      Map<String, double> ingresos, Map<String, double> prestamos) {
-    if (ingresos.isEmpty && prestamos.isEmpty) {
-      return const Center(child: Text('Sin datos'));
+  Widget _capitalRow(String label, String value, IconData icon, Color color) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        children: [
+          Icon(icon, size: 18, color: color),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(label, style: AppTextStyles.bodySmall),
+          ),
+          Text(
+            value,
+            style: AppTextStyles.titleSmall.copyWith(color: color),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPieChartCard(ResumenFinanciero r) {
+    final usuario = ref.watch(sesionActualProvider);
+    final capitalInicial = usuario?.capitalInicial ?? 0;
+    final capitalDisp = capitalInicial - r.saldoPendiente;
+    final ganancias = r.interesesTotales;
+
+    final labels = <String>[];
+    final values = <double>[];
+    final colors = <Color>[];
+
+    if (capitalDisp > 0) {
+      labels.add('Disponible');
+      values.add(capitalDisp);
+      colors.add(AppColors.success);
+    }
+    if (r.saldoPendiente > 0) {
+      labels.add('Invertido');
+      values.add(r.saldoPendiente);
+      colors.add(AppColors.primary);
+    }
+    if (ganancias > 0) {
+      labels.add('Ganancias');
+      values.add(ganancias);
+      colors.add(Colors.teal);
     }
 
-    final keys = ingresos.keys.toList();
-    final allValues = [
-      ...ingresos.values,
-      ...prestamos.values,
-    ];
-    final maxY = allValues.isEmpty
-        ? 100.0
-        : allValues.reduce((a, b) => a > b ? a : b);
+    if (values.isEmpty) {
+      return Card(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Center(
+            child: Text('Sin datos de capital', style: AppTextStyles.bodySmall),
+          ),
+        ),
+      );
+    }
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        maxY: maxY > 0 ? maxY * 1.2 : 100,
-        barTouchData: BarTouchData(
-          touchTooltipData: BarTouchTooltipData(
-            getTooltipItem: (group, groupIndex, rod, rodIndex) {
-              final label = rodIndex == 0 ? 'Ingresos' : 'Prestado';
-              return BarTooltipItem(
-                '$label\n${AppFormatters.moneda(rod.toY)}',
-                AppTextStyles.labelSmall.copyWith(color: Colors.white),
-              );
-            },
-          ),
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              getTitlesWidget: (value, meta) {
-                final idx = value.toInt();
-                if (idx >= 0 && idx < keys.length) {
-                  return Padding(
-                    padding: const EdgeInsets.only(top: 8),
-                    child: Text(
-                      keys[idx],
-                      style: AppTextStyles.labelSmall,
-                    ),
-                  );
-                }
-                return const SizedBox.shrink();
-              },
+    final total = values.fold<double>(0, (s, v) => s + v);
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            Text('Distribución de Capital', style: AppTextStyles.titleMedium),
+            const SizedBox(height: 16),
+            SizedBox(
+              height: 200,
+              child: PieChart(
+                PieChartData(
+                  sectionsSpace: 3,
+                  centerSpaceRadius: 40,
+                  sections: List.generate(values.length, (i) {
+                    final pct = (values[i] / total * 100);
+                    return PieChartSectionData(
+                      color: colors[i],
+                      value: values[i],
+                      title: '${pct.toStringAsFixed(1)}%',
+                      radius: 55,
+                      titleStyle: const TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    );
+                  }),
+                ),
+              ),
             ),
-          ),
-          leftTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          topTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
-          rightTitles: const AxisTitles(
-            sideTitles: SideTitles(showTitles: false),
-          ),
+            const SizedBox(height: 16),
+            ...List.generate(values.length, (i) => Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 3),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 14,
+                        height: 14,
+                        decoration: BoxDecoration(
+                          color: colors[i],
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(labels[i], style: AppTextStyles.bodySmall),
+                      ),
+                      Text(
+                        AppFormatters.moneda(values[i]),
+                        style: AppTextStyles.titleSmall.copyWith(color: colors[i]),
+                      ),
+                    ],
+                  ),
+                )),
+          ],
         ),
-        borderData: FlBorderData(show: false),
-        gridData: const FlGridData(show: false),
-        barGroups: List.generate(keys.length, (i) {
-          final key = keys[i];
-          return BarChartGroupData(
-            x: i,
-            barsSpace: 4,
-            barRods: [
-              BarChartRodData(
-                toY: ingresos[key] ?? 0,
-                color: AppColors.success,
-                width: 14,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(4)),
-              ),
-              BarChartRodData(
-                toY: prestamos[key] ?? 0,
-                color: AppColors.primary,
-                width: 14,
-                borderRadius:
-                    const BorderRadius.vertical(top: Radius.circular(4)),
-              ),
-            ],
-          );
-        }),
       ),
     );
   }

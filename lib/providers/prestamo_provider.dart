@@ -119,6 +119,8 @@ final resumenFinancieroProvider =
     clienteRepo.contarNuevosMes(usuarioId),
     pagoRepo.pagosPorMes(6, usuarioId),
     prestamoRepo.prestamosPorMes(6, usuarioId),
+    pagoRepo.sumarInteresesTotales(usuarioId),
+    pagoRepo.sumarCobradoTotal(usuarioId),
   ]);
 
   final prestamosActivos = results[4] as int;
@@ -139,5 +141,7 @@ final resumenFinancieroProvider =
     tasaMorosidad: tasaMorosidad,
     pagosPorMes: results[8] as Map<String, double>,
     prestamosPorMes: results[9] as Map<String, double>,
+    interesesTotales: results[10] as double,
+    totalCobrado: results[11] as double,
   );
 });

@@ -227,8 +227,15 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
                 .obtenerPorId(_prestamoId!)
             : null;
 
+        final cuotasPendientes = _prestamoId != null
+            ? await ref
+                .read(prestamoRepositoryProvider)
+                .contarCuotasPendientes(_prestamoId!)
+            : 0;
+
         final reciboPdfPath = await CarpetaService.instance
-            .generarReciboPago(pago, cliente, cuota, prestamo);
+            .generarReciboPago(pago, cliente, cuota, prestamo,
+                cuotasPendientes: cuotasPendientes);
 
         // Guardar ruta del PDF en el pago
         final pagoConPdf = pago.copyWith(pdfPath: reciboPdfPath);

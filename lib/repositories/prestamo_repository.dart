@@ -107,6 +107,15 @@ class PrestamoRepository {
     return result.map((m) => CuotaPago.fromMap(m)).toList();
   }
 
+  Future<int> contarCuotasPendientes(String prestamoId) async {
+    final db = await _db.database;
+    final result = await db.rawQuery(
+      "SELECT COUNT(*) as total FROM tabla_pagos WHERE prestamo_id = ? AND pagado = 0",
+      [prestamoId],
+    );
+    return result.first['total'] as int;
+  }
+
   Future<CuotaPago?> obtenerCuotaActual(String prestamoId) async {
     final db = await _db.database;
     final result = await db.query(

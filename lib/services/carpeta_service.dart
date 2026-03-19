@@ -143,8 +143,9 @@ class CarpetaService {
     Pago pago,
     Cliente cliente,
     CuotaPago? cuota,
-    Prestamo? prestamo,
-  ) async {
+    Prestamo? prestamo, {
+    int cuotasPendientes = 0,
+  }) async {
     final carpeta =
         await _carpetaCliente(cliente.id, cliente.nombreCompleto);
     final path = '$carpeta/recibo_${pago.id}.pdf';
@@ -173,8 +174,7 @@ class CarpetaService {
                 _pdfRow('Cuota No.', '${cuota.cuotaNumero}'),
               if (prestamo != null) ...[
                 pw.SizedBox(height: 10),
-                _pdfRow('Saldo Pendiente',
-                    AppFormatters.moneda(prestamo.saldoPendiente)),
+                _pdfRow('Cuotas pendientes', '$cuotasPendientes de ${prestamo.plazoMeses}'),
               ],
               pw.SizedBox(height: 30),
               pw.Divider(),
