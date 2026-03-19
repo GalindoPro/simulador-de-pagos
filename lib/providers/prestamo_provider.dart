@@ -33,6 +33,14 @@ class PrestamosNotifier extends AsyncNotifier<List<Prestamo>> {
     ref.invalidateSelf();
   }
 
+  Future<void> regenerarCuotas(
+      Prestamo prestamo, List<CuotaPago> nuevasCuotas) async {
+    final repo = ref.read(prestamoRepositoryProvider);
+    await repo.regenerarCuotas(prestamo, nuevasCuotas);
+    ref.invalidateSelf();
+    ref.invalidate(cuotasPrestamoProvider(prestamo.id));
+  }
+
   Future<void> registrarPago(
       String prestamoId, double monto, String cuotaId) async {
     final repo = ref.read(prestamoRepositoryProvider);

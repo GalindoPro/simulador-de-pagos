@@ -154,6 +154,33 @@ class PrestamoRepository {
     );
   }
 
+  /// Regenera cuotas pendientes manteniendo las ya pagadas
+  Future<void> regenerarCuotas(
+      Prestamo prestamo, List<CuotaPago> nuevasCuotas) async {
+    final db = await _db.database;
+    await db.transaction((txn) async {
+      // Actualizar el préstamo
+      await txn.update(
+        'prestamos',
+        prestamo.toMap(),
+        where: 'id = ?',
+        whereArgs: [prestamo.id],
+      );
+
+      // Eliminar cuotas NO pagadas
+      await txn.delete(
+        'tabla_pagos',
+        where: 'prestamo_id = ? AND pagado = 0',
+        whereArgs: [prestamo.id],
+      );
+
+      // Insertar nuevas cuotas pendientes
+      for (final cuota in nuevasCuotas) {
+        await txn.insert('tabla_pagos', cuota.toMap());
+      }
+    });
+  }
+
   Future<int> contarActivos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.rawQuery(
