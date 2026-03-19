@@ -13,15 +13,37 @@ import '../../widgets/confirm_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/app_error_widget.dart';
 
-class ClientesScreen extends ConsumerWidget {
+class ClientesScreen extends ConsumerStatefulWidget {
   const ClientesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final clientesAsync = ref.watch(clientesFiltradosProvider);
-    final busquedaCtrl = TextEditingController(
+  ConsumerState<ClientesScreen> createState() => _ClientesScreenState();
+}
+
+class _ClientesScreenState extends ConsumerState<ClientesScreen> {
+  late final TextEditingController _busquedaCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _busquedaCtrl = TextEditingController(
       text: ref.read(clientesBusquedaProvider),
     );
+  }
+
+  @override
+  void dispose() {
+    _busquedaCtrl.dispose();
+    super.dispose();
+  }
+
+  void _refrescar() {
+    ref.invalidate(clientesProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final clientesAsync = ref.watch(clientesFiltradosProvider);
 
     return PopScope(
       canPop: false,
@@ -48,7 +70,7 @@ class ClientesScreen extends ConsumerWidget {
           child: Padding(
             padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
             child: TextField(
-              controller: busquedaCtrl,
+              controller: _busquedaCtrl,
               decoration: InputDecoration(
                 hintText: '${AppStrings.buscar} cliente...',
                 prefixIcon: const Icon(Icons.search),
@@ -75,7 +97,10 @@ class ClientesScreen extends ConsumerWidget {
               icono: Icons.people_outline,
               subtitulo: 'Agrega tu primer cliente',
               textoAccion: AppStrings.nuevoCliente,
-              onAccion: () => context.push(AppRoutes.nuevoCliente),
+              onAccion: () async {
+                await context.push(AppRoutes.nuevoCliente);
+                _refrescar();
+              },
             );
           }
 
@@ -141,7 +166,10 @@ class ClientesScreen extends ConsumerWidget {
                       style: AppTextStyles.bodySmall,
                     ),
                     trailing: const Icon(Icons.chevron_right),
-                    onTap: () => context.push('/clientes/${c.id}'),
+                    onTap: () async {
+                      await context.push('/clientes/${c.id}');
+                      _refrescar();
+                    },
                   ),
                 );
               },
@@ -155,7 +183,10 @@ class ClientesScreen extends ConsumerWidget {
         ),
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(AppRoutes.nuevoCliente),
+        onPressed: () async {
+          await context.push(AppRoutes.nuevoCliente);
+          _refrescar();
+        },
         child: const Icon(Icons.person_add),
       ),
     ),

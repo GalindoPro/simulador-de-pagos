@@ -21,36 +21,39 @@ class StatCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(14),
+      margin: const EdgeInsets.all(4),
+      child: Container(
+        constraints: const BoxConstraints(minHeight: 100),
+        padding: const EdgeInsets.all(10),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Icon(icono, color: color, size: 20),
-                ),
-                const Spacer(),
-              ],
+            Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: Icon(icono, color: color, size: 18),
             ),
-            const SizedBox(height: 10),
-            Text(
-              valor,
-              style: AppTextStyles.titleLarge.copyWith(color: color),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+            const SizedBox(height: 6),
+            FittedBox(
+              fit: BoxFit.scaleDown,
+              alignment: Alignment.centerLeft,
+              child: Text(
+                valor,
+                style: AppTextStyles.titleSmall.copyWith(color: color),
+                maxLines: 1,
+              ),
             ),
             const SizedBox(height: 2),
             Text(
               titulo,
-              style: AppTextStyles.labelMedium,
-              maxLines: 1,
+              style: AppTextStyles.labelSmall.copyWith(
+                color: AppColors.textSecondary,
+              ),
+              maxLines: 2,
               overflow: TextOverflow.ellipsis,
             ),
             if (subtitulo != null) ...[

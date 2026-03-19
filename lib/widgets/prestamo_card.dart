@@ -22,11 +22,12 @@ class PrestamoCard extends StatelessWidget {
     final colorEstado = _colorEstado();
 
     return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
       child: InkWell(
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Padding(
-          padding: const EdgeInsets.all(14),
+          padding: const EdgeInsets.all(12),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -40,18 +41,20 @@ class PrestamoCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Container(
                     padding:
-                        const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: colorEstado.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(12),
                     ),
                     child: Text(
                       prestamo.estado.toUpperCase(),
-                      style: AppTextStyles.labelSmall.copyWith(
+                      style: TextStyle(
                         color: colorEstado,
                         fontWeight: FontWeight.bold,
+                        fontSize: 10,
                       ),
                     ),
                   ),
@@ -64,17 +67,24 @@ class PrestamoCard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          AppFormatters.moneda(prestamo.montoOriginal),
-                          style: AppTextStyles.titleMedium,
+                        FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            AppFormatters.moneda(prestamo.montoOriginal),
+                            style: AppTextStyles.titleMedium,
+                          ),
                         ),
                         Text(
                           'Saldo: ${AppFormatters.moneda(prestamo.saldoPendiente)}',
                           style: AppTextStyles.bodySmall,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ],
                     ),
                   ),
+                  const SizedBox(width: 8),
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.end,
                     children: [

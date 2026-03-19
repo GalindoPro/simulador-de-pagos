@@ -27,6 +27,13 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   int _currentIndex = 0;
   DateTime? _lastBackPress;
 
+  void _refrescarDashboard() {
+    ref.invalidate(resumenFinancieroProvider);
+    ref.invalidate(pagosRecientesProvider(5));
+    ref.invalidate(proximosAVencerProvider);
+    ref.invalidate(clientesProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final usuario = ref.watch(sesionActualProvider);
@@ -115,13 +122,19 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                     _accionRapida(
                       Icons.person_add,
                       'Nuevo\nCliente',
-                      () => context.push(AppRoutes.nuevoCliente),
+                      () async {
+                        await context.push(AppRoutes.nuevoCliente);
+                        _refrescarDashboard();
+                      },
                     ),
                     const SizedBox(width: 12),
                     _accionRapida(
                       Icons.description,
                       'Nuevo\nPréstamo',
-                      () => context.push(AppRoutes.nuevoPrestamo),
+                      () async {
+                        await context.push(AppRoutes.nuevoPrestamo);
+                        _refrescarDashboard();
+                      },
                     ),
                     const SizedBox(width: 12),
                     _accionRapida(
@@ -225,7 +238,9 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 // Últimos pagos
                 SeccionHeader(
                   titulo: AppStrings.ultimosPagos,
-                  onVerTodos: () => context.go(AppRoutes.pagos),
+                  onVerTodos: () {
+                    context.go(AppRoutes.pagos);
+                  },
                 ),
                 pagosRecientes.when(
                   data: (pagos) {
@@ -246,8 +261,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         return PagoListTile(
                           pago: p,
                           cliente: cliente,
-                          onTap: () =>
-                              context.push('/pagos/${p.id}'),
+                          onTap: () async {
+                            await context.push('/pagos/${p.id}');
+                            _refrescarDashboard();
+                          },
                         );
                       }).toList(),
                     );
@@ -281,8 +298,10 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                         return PrestamoCard(
                           prestamo: p,
                           cliente: cliente,
-                          onTap: () =>
-                              context.push('/prestamos/${p.id}'),
+                          onTap: () async {
+                            await context.push('/prestamos/${p.id}');
+                            _refrescarDashboard();
+                          },
                         );
                       }).toList(),
                     );
@@ -304,6 +323,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
           });
           switch (i) {
             case 0:
+              _refrescarDashboard();
               context.go(AppRoutes.dashboard);
               break;
             case 1:

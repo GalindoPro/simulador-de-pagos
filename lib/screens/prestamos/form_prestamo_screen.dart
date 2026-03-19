@@ -230,6 +230,7 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
         return;
       }
 
+      ref.invalidate(resumenFinancieroProvider);
       AppSnackBar.exito(context, AppStrings.prestamoCreado);
       context.pop();
     } catch (e) {

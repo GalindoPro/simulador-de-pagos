@@ -26,6 +26,12 @@ class PagosScreen extends ConsumerStatefulWidget {
 }
 
 class _PagosScreenState extends ConsumerState<PagosScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => _refrescarTodo());
+  }
+
   void _refrescarTodo() {
     ref.invalidate(pagosProvider);
     ref.invalidate(resumenPagosProvider);
@@ -90,8 +96,9 @@ class _PagosScreenState extends ConsumerState<PagosScreen> {
           ),
 
           // Filtros
-          Padding(
-            padding: const EdgeInsets.all(12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
                 _filtroChip('Todos', null, filtro.estado),
@@ -244,9 +251,16 @@ class _PagosScreenState extends ConsumerState<PagosScreen> {
   }
 
   Widget _filtroChip(String label, String? valor, String? actual) {
+    final isSelected = actual == valor;
     return FilterChip(
-      label: Text(label),
-      selected: actual == valor,
+      label: Text(
+        label,
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      selected: isSelected,
       onSelected: (_) {
         final filtro = ref.read(pagosFiltroProvider);
         ref.read(pagosFiltroProvider.notifier).state =

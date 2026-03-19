@@ -12,11 +12,27 @@ import '../../widgets/prestamo_card.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/app_error_widget.dart';
 
-class PrestamosScreen extends ConsumerWidget {
+class PrestamosScreen extends ConsumerStatefulWidget {
   const PrestamosScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PrestamosScreen> createState() => _PrestamosScreenState();
+}
+
+class _PrestamosScreenState extends ConsumerState<PrestamosScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => _refrescar());
+  }
+
+  void _refrescar() {
+    ref.invalidate(prestamosProvider);
+    ref.invalidate(resumenFinancieroProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final prestamosAsync = ref.watch(prestamosFiltradosProvider);
     final filtroActual = ref.watch(prestamosFiltroProvider);
     final clientesAsync = ref.watch(clientesProvider);
@@ -74,17 +90,18 @@ class PrestamosScreen extends ConsumerWidget {
           ),
 
           // Filter chips
-          Padding(
-            padding: const EdgeInsets.all(12),
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             child: Row(
               children: [
-                _filtroChip(ref, 'Todos', 'todos', filtroActual),
+                _filtroChip('Todos', 'todos', filtroActual),
                 const SizedBox(width: 8),
-                _filtroChip(ref, 'Activos', 'activos', filtroActual),
+                _filtroChip('Activos', 'activos', filtroActual),
                 const SizedBox(width: 8),
-                _filtroChip(ref, 'Vencidos', 'vencidos', filtroActual),
+                _filtroChip('Vencidos', 'vencidos', filtroActual),
                 const SizedBox(width: 8),
-                _filtroChip(ref, 'Pagados', 'pagados', filtroActual),
+                _filtroChip('Pagados', 'pagados', filtroActual),
               ],
             ),
           ),
@@ -98,7 +115,10 @@ class PrestamosScreen extends ConsumerWidget {
                     mensaje: AppStrings.sinPrestamos,
                     icono: Icons.payments_outlined,
                     textoAccion: AppStrings.nuevoPrestamo,
-                    onAccion: () => context.push(AppRoutes.nuevoPrestamo),
+                    onAccion: () async {
+                      await context.push(AppRoutes.nuevoPrestamo);
+                      _refrescar();
+                    },
                   );
                 }
 
@@ -118,7 +138,10 @@ class PrestamosScreen extends ConsumerWidget {
                       return PrestamoCard(
                         prestamo: p,
                         cliente: cliente,
-                        onTap: () => context.push('/prestamos/${p.id}'),
+                        onTap: () async {
+                          await context.push('/prestamos/${p.id}');
+                          _refrescar();
+                        },
                       );
                     },
                   ),
@@ -135,18 +158,27 @@ class PrestamosScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(AppRoutes.nuevoPrestamo),
+        onPressed: () async {
+          await context.push(AppRoutes.nuevoPrestamo);
+          _refrescar();
+        },
         child: const Icon(Icons.add),
       ),
     ),
     );
   }
 
-  Widget _filtroChip(
-      WidgetRef ref, String label, String valor, String actual) {
+  Widget _filtroChip(String label, String valor, String actual) {
+    final isSelected = actual == valor;
     return FilterChip(
-      label: Text(label),
-      selected: actual == valor,
+      label: Text(
+        label,
+        style: TextStyle(
+          color: AppColors.textPrimary,
+          fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+        ),
+      ),
+      selected: isSelected,
       onSelected: (_) {
         ref.read(prestamosFiltroProvider.notifier).state = valor;
       },

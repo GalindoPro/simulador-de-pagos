@@ -15,14 +15,32 @@ import '../../widgets/pago_list_tile.dart';
 import '../../widgets/whatsapp_button.dart';
 import '../../widgets/app_error_widget.dart';
 
-class DetalleClienteScreen extends ConsumerWidget {
+class DetalleClienteScreen extends ConsumerStatefulWidget {
   final String clienteId;
 
   const DetalleClienteScreen({super.key, required this.clienteId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final clienteAsync = ref.watch(clientePorIdProvider(clienteId));
+  ConsumerState<DetalleClienteScreen> createState() =>
+      _DetalleClienteScreenState();
+}
+
+class _DetalleClienteScreenState extends ConsumerState<DetalleClienteScreen> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(() => _refrescar());
+  }
+
+  void _refrescar() {
+    ref.invalidate(clientePorIdProvider(widget.clienteId));
+    ref.invalidate(prestamosPorClienteProvider(widget.clienteId));
+    ref.invalidate(pagosPorClienteProvider(widget.clienteId));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final clienteAsync = ref.watch(clientePorIdProvider(widget.clienteId));
 
     return clienteAsync.when(
       data: (cliente) {
@@ -41,8 +59,10 @@ class DetalleClienteScreen extends ConsumerWidget {
               actions: [
                 IconButton(
                   icon: const Icon(Icons.edit),
-                  onPressed: () =>
-                      context.push('/clientes/${cliente.id}/editar'),
+                  onPressed: () async {
+                    await context.push('/clientes/${cliente.id}/editar');
+                    _refrescar();
+                  },
                 ),
               ],
               bottom: const TabBar(
@@ -144,10 +164,10 @@ class DetalleClienteScreen extends ConsumerWidget {
                       ),
 
                       // Tab Préstamos
-                      _TabPrestamos(clienteId: clienteId, cliente: cliente),
+                      _TabPrestamos(clienteId: widget.clienteId, cliente: cliente),
 
                       // Tab Pagos
-                      _TabPagos(clienteId: clienteId, cliente: cliente),
+                      _TabPagos(clienteId: widget.clienteId, cliente: cliente),
                     ],
                   ),
                 ),
@@ -176,16 +196,28 @@ class DetalleClienteScreen extends ConsumerWidget {
   }
 }
 
-class _TabPrestamos extends ConsumerWidget {
+class _TabPrestamos extends ConsumerStatefulWidget {
   final String clienteId;
   final dynamic cliente;
 
   const _TabPrestamos({required this.clienteId, required this.cliente});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_TabPrestamos> createState() => _TabPrestamosState();
+}
+
+class _TabPrestamosState extends ConsumerState<_TabPrestamos> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+        () => ref.invalidate(prestamosPorClienteProvider(widget.clienteId)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final prestamosAsync =
-        ref.watch(prestamosPorClienteProvider(clienteId));
+        ref.watch(prestamosPorClienteProvider(widget.clienteId));
 
     return prestamosAsync.when(
       data: (prestamos) {
@@ -195,16 +227,24 @@ class _TabPrestamos extends ConsumerWidget {
             icono: Icons.payments_outlined,
           );
         }
-        return ListView.builder(
-          itemCount: prestamos.length,
-          itemBuilder: (ctx, i) {
-            return PrestamoCard(
-              prestamo: prestamos[i],
-              cliente: cliente,
-              onTap: () =>
-                  context.push('/prestamos/${prestamos[i].id}'),
-            );
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(prestamosPorClienteProvider(widget.clienteId));
           },
+          child: ListView.builder(
+            itemCount: prestamos.length,
+            itemBuilder: (ctx, i) {
+              return PrestamoCard(
+                prestamo: prestamos[i],
+                cliente: widget.cliente,
+                onTap: () async {
+                  await context.push('/prestamos/${prestamos[i].id}');
+                  ref.invalidate(
+                      prestamosPorClienteProvider(widget.clienteId));
+                },
+              );
+            },
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
@@ -213,15 +253,27 @@ class _TabPrestamos extends ConsumerWidget {
   }
 }
 
-class _TabPagos extends ConsumerWidget {
+class _TabPagos extends ConsumerStatefulWidget {
   final String clienteId;
   final dynamic cliente;
 
   const _TabPagos({required this.clienteId, required this.cliente});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final pagosAsync = ref.watch(pagosPorClienteProvider(clienteId));
+  ConsumerState<_TabPagos> createState() => _TabPagosState();
+}
+
+class _TabPagosState extends ConsumerState<_TabPagos> {
+  @override
+  void initState() {
+    super.initState();
+    Future.microtask(
+        () => ref.invalidate(pagosPorClienteProvider(widget.clienteId)));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pagosAsync = ref.watch(pagosPorClienteProvider(widget.clienteId));
 
     return pagosAsync.when(
       data: (pagos) {
@@ -231,15 +283,24 @@ class _TabPagos extends ConsumerWidget {
             icono: Icons.attach_money,
           );
         }
-        return ListView.builder(
-          itemCount: pagos.length,
-          itemBuilder: (ctx, i) {
-            return PagoListTile(
-              pago: pagos[i],
-              cliente: cliente,
-              onTap: () => context.push('/pagos/${pagos[i].id}'),
-            );
+        return RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(pagosPorClienteProvider(widget.clienteId));
           },
+          child: ListView.builder(
+            itemCount: pagos.length,
+            itemBuilder: (ctx, i) {
+              return PagoListTile(
+                pago: pagos[i],
+                cliente: widget.cliente,
+                onTap: () async {
+                  await context.push('/pagos/${pagos[i].id}');
+                  ref.invalidate(
+                      pagosPorClienteProvider(widget.clienteId));
+                },
+              );
+            },
+          ),
         );
       },
       loading: () => const Center(child: CircularProgressIndicator()),
