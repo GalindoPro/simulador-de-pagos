@@ -12,13 +12,45 @@ import '../../widgets/app_snack_bar.dart';
 import '../../widgets/tabla_amortizacion.dart';
 import '../../widgets/app_error_widget.dart';
 
-class DetallePrestamoScreen extends ConsumerWidget {
+class DetallePrestamoScreen extends ConsumerStatefulWidget {
   final String prestamoId;
 
   const DetallePrestamoScreen({super.key, required this.prestamoId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DetallePrestamoScreen> createState() =>
+      _DetallePrestamoScreenState();
+}
+
+class _DetallePrestamoScreenState
+    extends ConsumerState<DetallePrestamoScreen> with WidgetsBindingObserver {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refrescarDatos();
+    }
+  }
+
+  void _refrescarDatos() {
+    ref.invalidate(cuotasPrestamoProvider(widget.prestamoId));
+    ref.invalidate(prestamosProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prestamoId = widget.prestamoId;
     final prestamosAsync = ref.watch(prestamosProvider);
 
     return prestamosAsync.when(
@@ -142,10 +174,11 @@ class DetallePrestamoScreen extends ConsumerWidget {
                 // Botón registrar pago
                 if (prestamo.estado == 'activo')
                   ElevatedButton.icon(
-                    onPressed: () {
-                      context.push(
+                    onPressed: () async {
+                      await context.push(
                         '/pagos/nuevo?prestamoId=$prestamoId&clienteId=${prestamo.clienteId}',
                       );
+                      _refrescarDatos();
                     },
                     icon: const Icon(Icons.payment),
                     label: const Text('Registrar Pago'),

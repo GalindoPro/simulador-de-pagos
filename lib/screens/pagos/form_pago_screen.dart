@@ -224,8 +224,12 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
                 .obtenerPorId(_prestamoId!)
             : null;
 
-        await CarpetaService.instance
+        final reciboPdfPath = await CarpetaService.instance
             .generarReciboPago(pago, cliente, cuota, prestamo);
+
+        // Guardar ruta del PDF en el pago
+        final pagoConPdf = pago.copyWith(pdfPath: reciboPdfPath);
+        await ref.read(pagosProvider.notifier).actualizar(pagoConPdf);
 
         // WhatsApp
         if (mounted) {
@@ -249,6 +253,11 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
       }
 
       ref.invalidate(prestamosProvider);
+      ref.invalidate(resumenPagosProvider);
+      ref.invalidate(pagosRecientesProvider);
+      if (_prestamoId != null) {
+        ref.invalidate(cuotasPrestamoProvider(_prestamoId!));
+      }
       AppSnackBar.exito(context, AppStrings.pagoRegistrado);
       context.pop();
     } catch (e) {

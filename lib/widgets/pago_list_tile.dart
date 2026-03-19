@@ -10,6 +10,7 @@ class PagoListTile extends StatelessWidget {
   final Cliente? cliente;
   final VoidCallback? onTap;
   final VoidCallback? onEliminar;
+  final VoidCallback? onCompartirPdf;
 
   const PagoListTile({
     super.key,
@@ -17,6 +18,7 @@ class PagoListTile extends StatelessWidget {
     this.cliente,
     this.onTap,
     this.onEliminar,
+    this.onCompartirPdf,
   });
 
   IconData _iconoMetodo() {
@@ -55,51 +57,76 @@ class PagoListTile extends StatelessWidget {
         backgroundColor: _colorEstado().withValues(alpha: 0.1),
         child: Icon(_iconoMetodo(), color: _colorEstado(), size: 20),
       ),
-      title: Text(
-        cliente?.nombreCompleto ?? 'Cliente',
-        style: AppTextStyles.titleSmall,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+      title: Row(
         children: [
-          Text(
-            pago.concepto,
-            style: AppTextStyles.bodySmall,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
+          Expanded(
+            child: Text(
+              cliente?.nombreCompleto ?? 'Cliente',
+              style: AppTextStyles.titleSmall,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
-          Text(
-            AppFormatters.fechaCorta(pago.fecha),
-            style: AppTextStyles.caption,
-          ),
-        ],
-      ),
-      trailing: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
           Text(
             AppFormatters.moneda(pago.monto),
             style: AppTextStyles.titleSmall.copyWith(
               color: _colorEstado(),
             ),
           ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-            decoration: BoxDecoration(
-              color: _colorEstado().withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              pago.estado,
-              style: AppTextStyles.labelSmall.copyWith(
-                color: _colorEstado(),
-                fontSize: 9,
-              ),
+        ],
+      ),
+      subtitle: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  pago.concepto,
+                  style: AppTextStyles.bodySmall,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                Row(
+                  children: [
+                    Text(
+                      AppFormatters.fechaCorta(pago.fecha),
+                      style: AppTextStyles.caption,
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: _colorEstado().withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        pago.estado,
+                        style: AppTextStyles.labelSmall.copyWith(
+                          color: _colorEstado(),
+                          fontSize: 9,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
+          if (pago.estaCompletado && onCompartirPdf != null)
+            IconButton(
+              onPressed: onCompartirPdf,
+              icon: const Icon(Icons.picture_as_pdf),
+              color: AppColors.primary,
+              iconSize: 22,
+              tooltip: 'Compartir recibo',
+              constraints: const BoxConstraints(
+                minWidth: 36,
+                minHeight: 36,
+              ),
+              padding: EdgeInsets.zero,
+            ),
         ],
       ),
       isThreeLine: true,

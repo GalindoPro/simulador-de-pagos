@@ -6,18 +6,33 @@ import '../../constants/app_strings.dart';
 import '../../helpers/app_formatters.dart';
 import '../../providers/pago_provider.dart';
 import '../../providers/cliente_provider.dart';
+import '../../providers/prestamo_provider.dart';
 import '../../router/app_routes.dart';
+import '../../services/carpeta_service.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/pago_list_tile.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/app_error_widget.dart';
+import '../../widgets/app_snack_bar.dart';
+import '../../models/pago.dart';
+import '../../models/cliente.dart';
 
-class PagosScreen extends ConsumerWidget {
+class PagosScreen extends ConsumerStatefulWidget {
   const PagosScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<PagosScreen> createState() => _PagosScreenState();
+}
+
+class _PagosScreenState extends ConsumerState<PagosScreen> {
+  void _refrescarTodo() {
+    ref.invalidate(pagosProvider);
+    ref.invalidate(resumenPagosProvider);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pagosAsync = ref.watch(pagosFiltradosProvider);
     final filtro = ref.watch(pagosFiltroProvider);
     final clientesAsync = ref.watch(clientesProvider);
@@ -79,12 +94,12 @@ class PagosScreen extends ConsumerWidget {
             padding: const EdgeInsets.all(12),
             child: Row(
               children: [
-                _filtroChip(ref, 'Todos', null, filtro.estado),
+                _filtroChip('Todos', null, filtro.estado),
                 const SizedBox(width: 8),
-                _filtroChip(ref, 'Pendiente', 'pendiente', filtro.estado),
+                _filtroChip('Pendiente', 'pendiente', filtro.estado),
                 const SizedBox(width: 8),
                 _filtroChip(
-                    ref, 'Completado', 'completado', filtro.estado),
+                    'Completado', 'completado', filtro.estado),
               ],
             ),
           ),
@@ -118,7 +133,10 @@ class PagosScreen extends ConsumerWidget {
                     mensaje: AppStrings.sinPagos,
                     icono: Icons.attach_money,
                     textoAccion: AppStrings.nuevoPago,
-                    onAccion: () => context.push(AppRoutes.nuevoPago),
+                    onAccion: () async {
+                      await context.push(AppRoutes.nuevoPago);
+                      _refrescarTodo();
+                    },
                   );
                 }
 
@@ -158,7 +176,13 @@ class PagosScreen extends ConsumerWidget {
                         child: PagoListTile(
                           pago: p,
                           cliente: cliente,
-                          onTap: () => context.push('/pagos/${p.id}'),
+                          onTap: () async {
+                            await context.push('/pagos/${p.id}');
+                            _refrescarTodo();
+                          },
+                          onCompartirPdf: p.estaCompletado
+                              ? () => _compartirRecibo(p, cliente)
+                              : null,
                         ),
                       );
                     },
@@ -176,15 +200,50 @@ class PagosScreen extends ConsumerWidget {
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () => context.push(AppRoutes.nuevoPago),
+        onPressed: () async {
+          await context.push(AppRoutes.nuevoPago);
+          _refrescarTodo();
+        },
         child: const Icon(Icons.add),
       ),
     ),
     );
   }
 
-  Widget _filtroChip(
-      WidgetRef ref, String label, String? valor, String? actual) {
+  Future<void> _compartirRecibo(
+      Pago pago, Cliente? cliente) async {
+    if (pago.pdfPath != null) {
+      await CarpetaService.instance.compartirArchivo(pago.pdfPath!);
+    } else if (cliente != null) {
+      // Regenerar recibo si no tiene ruta
+      final prestamo = pago.prestamoId != null
+          ? await ref
+              .read(prestamoRepositoryProvider)
+              .obtenerPorId(pago.prestamoId!)
+          : null;
+      final cuota = pago.prestamoId != null
+          ? await ref
+              .read(prestamoRepositoryProvider)
+              .obtenerCuotaActual(pago.prestamoId!)
+          : null;
+
+      final path = await CarpetaService.instance
+          .generarReciboPago(pago, cliente, cuota, prestamo);
+
+      // Guardar ruta del PDF
+      await ref
+          .read(pagosProvider.notifier)
+          .actualizar(pago.copyWith(pdfPath: path));
+
+      await CarpetaService.instance.compartirArchivo(path);
+
+      if (mounted) {
+        AppSnackBar.exito(context, 'Recibo generado y compartido');
+      }
+    }
+  }
+
+  Widget _filtroChip(String label, String? valor, String? actual) {
     return FilterChip(
       label: Text(label),
       selected: actual == valor,

@@ -116,6 +116,9 @@ class AppStrings {
   static const String ultimosPagos = 'Últimos pagos';
   static const String proximosVencer = 'Próximos a vencer';
   static const String cobrosPorMes = 'Cobros por mes';
+  static const String ingresosVsPrestamos = 'Ingresos vs Préstamos';
+  static const String ingresos = 'Ingresos';
+  static const String prestadoMes = 'Prestado';
 
   // Simulador
   static const String calcularTabla = 'Calcular tabla completa';

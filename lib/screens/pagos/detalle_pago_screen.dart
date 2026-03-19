@@ -1,6 +1,7 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../constants/app_text_styles.dart';
 import '../../helpers/app_formatters.dart';
@@ -12,18 +13,62 @@ import '../../services/whatsapp_service.dart';
 import '../../widgets/app_error_widget.dart';
 import '../../widgets/whatsapp_button.dart';
 
-class DetallePagoScreen extends ConsumerWidget {
+class DetallePagoScreen extends ConsumerStatefulWidget {
   final String pagoId;
 
   const DetallePagoScreen({super.key, required this.pagoId});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DetallePagoScreen> createState() => _DetallePagoScreenState();
+}
+
+class _DetallePagoScreenState extends ConsumerState<DetallePagoScreen> {
+  bool _generandoPdf = false;
+
+  Future<void> _compartirRecibo(dynamic pago, dynamic cliente) async {
+    setState(() => _generandoPdf = true);
+
+    try {
+      String? path = pago.pdfPath;
+
+      if (path == null && cliente != null) {
+        final prestamo = pago.prestamoId != null
+            ? await ref
+                .read(prestamoRepositoryProvider)
+                .obtenerPorId(pago.prestamoId!)
+            : null;
+        final cuota = pago.prestamoId != null
+            ? await ref
+                .read(prestamoRepositoryProvider)
+                .obtenerCuotaActual(pago.prestamoId!)
+            : null;
+
+        path = await CarpetaService.instance
+            .generarReciboPago(pago, cliente, cuota, prestamo);
+
+        await ref
+            .read(pagosProvider.notifier)
+            .actualizar(pago.copyWith(pdfPath: path));
+      }
+
+      if (path != null) {
+        await CarpetaService.instance.compartirArchivo(path);
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _generandoPdf = false);
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final pagosAsync = ref.watch(pagosProvider);
 
     return pagosAsync.when(
       data: (pagos) {
-        final pago = pagos.where((p) => p.id == pagoId).firstOrNull;
+        final pago =
+            pagos.where((p) => p.id == widget.pagoId).firstOrNull;
         if (pago == null) {
           return Scaffold(
             appBar: AppBar(),
@@ -41,6 +86,134 @@ class DetallePagoScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Banner de estado
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: pago.estaCompletado
+                        ? AppColors.successLight
+                        : AppColors.warningLight,
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        pago.estaCompletado
+                            ? Icons.check_circle
+                            : Icons.pending,
+                        color: pago.estaCompletado
+                            ? AppColors.success
+                            : AppColors.warning,
+                        size: 32,
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              pago.estaCompletado
+                                  ? 'Pago completado'
+                                  : 'Pago pendiente',
+                              style: AppTextStyles.titleSmall.copyWith(
+                                color: pago.estaCompletado
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                              ),
+                            ),
+                            Text(
+                              AppFormatters.moneda(pago.monto),
+                              style: AppTextStyles.headlineMedium.copyWith(
+                                color: pago.estaCompletado
+                                    ? AppColors.success
+                                    : AppColors.warning,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Acciones rápidas para compartir
+                if (pago.estaCompletado)
+                  Card(
+                    color: AppColors.primary.withValues(alpha: 0.05),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(AppStrings.compartirRecibo,
+                              style: AppTextStyles.titleSmall),
+                          const SizedBox(height: 12),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: ElevatedButton.icon(
+                                  onPressed: _generandoPdf
+                                      ? null
+                                      : () {
+                                          final cliente = ref
+                                              .read(clientePorIdProvider(
+                                                  pago.clienteId))
+                                              .valueOrNull;
+                                          _compartirRecibo(pago, cliente);
+                                        },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: AppColors.primary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 12),
+                                  ),
+                                  icon: _generandoPdf
+                                      ? const SizedBox(
+                                          width: 18,
+                                          height: 18,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Icon(Icons.picture_as_pdf),
+                                  label: Text(_generandoPdf
+                                      ? 'Generando...'
+                                      : 'PDF Recibo'),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: clienteAsync.when(
+                                  data: (cliente) {
+                                    if (cliente == null) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    return WhatsAppButton(
+                                      telefono: cliente.telefono,
+                                      mensaje: WhatsAppService
+                                          .mensajeConfirmacionPago(
+                                        nombre: cliente.nombre,
+                                        monto: AppFormatters.moneda(
+                                            pago.monto),
+                                        concepto: pago.concepto,
+                                      ),
+                                      mostrarTexto: true,
+                                    );
+                                  },
+                                  loading: () => const SizedBox.shrink(),
+                                  error: (_, _) => const SizedBox.shrink(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                const SizedBox(height: 16),
+
                 // Datos del pago
                 Card(
                   child: Padding(
@@ -57,7 +230,6 @@ class DetallePagoScreen extends ConsumerWidget {
                             'Fecha', AppFormatters.fechaLarga(pago.fecha)),
                         _datoRow('Método', pago.metodoPago),
                         _datoRow('Concepto', pago.concepto),
-                        _datoRow('Estado', pago.estado),
                         if (pago.cuotaNumero != null)
                           _datoRow(
                               'Cuota No.', '${pago.cuotaNumero}'),
@@ -177,47 +349,6 @@ class DetallePagoScreen extends ConsumerWidget {
                       .valueOrNull ??
                   const SizedBox.shrink(),
 
-                const SizedBox(height: 24),
-
-                // Botones
-                Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          if (pago.pdfPath != null) {
-                            CarpetaService.instance
-                                .compartirArchivo(pago.pdfPath!);
-                          }
-                        },
-                        icon: const Icon(Icons.picture_as_pdf),
-                        label: const Text('Ver Recibo'),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: clienteAsync.when(
-                        data: (cliente) {
-                          if (cliente == null) {
-                            return const SizedBox.shrink();
-                          }
-                          return WhatsAppButton(
-                            telefono: cliente.telefono,
-                            mensaje:
-                                WhatsAppService.mensajeConfirmacionPago(
-                              nombre: cliente.nombre,
-                              monto: AppFormatters.moneda(pago.monto),
-                              concepto: pago.concepto,
-                            ),
-                            mostrarTexto: true,
-                          );
-                        },
-                        loading: () => const SizedBox.shrink(),
-                        error: (_, _) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  ],
-                ),
                 const SizedBox(height: 32),
               ],
             ),

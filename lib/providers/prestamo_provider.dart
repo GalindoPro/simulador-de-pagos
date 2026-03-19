@@ -37,6 +37,7 @@ class PrestamosNotifier extends AsyncNotifier<List<Prestamo>> {
     await repo.registrarPago(prestamoId, monto);
     await repo.marcarCuotaPagada(cuotaId);
     ref.invalidateSelf();
+    ref.invalidate(cuotasPrestamoProvider(prestamoId));
   }
 }
 
@@ -95,6 +96,7 @@ final resumenFinancieroProvider =
     clienteRepo.contarActivos(),
     clienteRepo.contarNuevosMes(),
     pagoRepo.pagosPorMes(6),
+    prestamoRepo.prestamosPorMes(6),
   ]);
 
   final prestamosActivos = results[4] as int;
@@ -114,5 +116,6 @@ final resumenFinancieroProvider =
     clientesNuevosMes: results[7] as int,
     tasaMorosidad: tasaMorosidad,
     pagosPorMes: results[8] as Map<String, double>,
+    prestamosPorMes: results[9] as Map<String, double>,
   );
 });

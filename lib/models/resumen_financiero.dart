@@ -9,6 +9,7 @@ class ResumenFinanciero {
   final int clientesNuevosMes;
   final double tasaMorosidad;
   final Map<String, double> pagosPorMes;
+  final Map<String, double> prestamosPorMes;
 
   ResumenFinanciero({
     this.totalCobradoMes = 0,
@@ -21,5 +22,6 @@ class ResumenFinanciero {
     this.clientesNuevosMes = 0,
     this.tasaMorosidad = 0,
     this.pagosPorMes = const {},
+    this.prestamosPorMes = const {},
   });
 }

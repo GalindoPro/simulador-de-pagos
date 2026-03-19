@@ -120,7 +120,27 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
               ),
               const SizedBox(height: 24),
 
-              // Gráfica de barras
+              // Gráfica comparativa Ingresos vs Préstamos
+              Text(AppStrings.ingresosVsPrestamos,
+                  style: AppTextStyles.titleMedium),
+              const SizedBox(height: 8),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _legendItem(AppColors.success, AppStrings.ingresos),
+                  const SizedBox(width: 24),
+                  _legendItem(AppColors.primary, AppStrings.prestadoMes),
+                ],
+              ),
+              const SizedBox(height: 12),
+              SizedBox(
+                height: 220,
+                child: _buildGroupedBarChart(
+                    r.pagosPorMes, r.prestamosPorMes),
+              ),
+              const SizedBox(height: 24),
+
+              // Gráfica de barras cobros
               Text(AppStrings.cobrosPorMes,
                   style: AppTextStyles.titleMedium),
               const SizedBox(height: 12),
@@ -157,6 +177,113 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
         ),
       ),
     ),
+    );
+  }
+
+  Widget _legendItem(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(3),
+          ),
+        ),
+        const SizedBox(width: 6),
+        Text(label, style: AppTextStyles.labelSmall),
+      ],
+    );
+  }
+
+  Widget _buildGroupedBarChart(
+      Map<String, double> ingresos, Map<String, double> prestamos) {
+    if (ingresos.isEmpty && prestamos.isEmpty) {
+      return const Center(child: Text('Sin datos'));
+    }
+
+    final keys = ingresos.keys.toList();
+    final allValues = [
+      ...ingresos.values,
+      ...prestamos.values,
+    ];
+    final maxY = allValues.isEmpty
+        ? 100.0
+        : allValues.reduce((a, b) => a > b ? a : b);
+
+    return BarChart(
+      BarChartData(
+        alignment: BarChartAlignment.spaceAround,
+        maxY: maxY > 0 ? maxY * 1.2 : 100,
+        barTouchData: BarTouchData(
+          touchTooltipData: BarTouchTooltipData(
+            getTooltipItem: (group, groupIndex, rod, rodIndex) {
+              final label = rodIndex == 0 ? 'Ingresos' : 'Prestado';
+              return BarTooltipItem(
+                '$label\n${AppFormatters.moneda(rod.toY)}',
+                AppTextStyles.labelSmall.copyWith(color: Colors.white),
+              );
+            },
+          ),
+        ),
+        titlesData: FlTitlesData(
+          show: true,
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              getTitlesWidget: (value, meta) {
+                final idx = value.toInt();
+                if (idx >= 0 && idx < keys.length) {
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      keys[idx],
+                      style: AppTextStyles.labelSmall,
+                    ),
+                  );
+                }
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        gridData: const FlGridData(show: false),
+        barGroups: List.generate(keys.length, (i) {
+          final key = keys[i];
+          return BarChartGroupData(
+            x: i,
+            barsSpace: 4,
+            barRods: [
+              BarChartRodData(
+                toY: ingresos[key] ?? 0,
+                color: AppColors.success,
+                width: 14,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+              BarChartRodData(
+                toY: prestamos[key] ?? 0,
+                color: AppColors.primary,
+                width: 14,
+                borderRadius:
+                    const BorderRadius.vertical(top: Radius.circular(4)),
+              ),
+            ],
+          );
+        }),
+      ),
     );
   }
 

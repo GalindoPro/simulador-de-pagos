@@ -184,4 +184,24 @@ class PrestamoRepository {
     );
     return (result.first['total'] as num).toDouble();
   }
+
+  Future<Map<String, double>> prestamosPorMes(int meses) async {
+    final db = await _db.database;
+    final resultado = <String, double>{};
+    final now = DateTime.now();
+
+    for (int i = meses - 1; i >= 0; i--) {
+      final mes = DateTime(now.year, now.month - i, 1);
+      final finMes = DateTime(now.year, now.month - i + 1, 1);
+      final result = await db.rawQuery(
+        "SELECT COALESCE(SUM(monto_original), 0) as total FROM prestamos WHERE fecha_inicio >= ? AND fecha_inicio < ?",
+        [mes.toIso8601String(), finMes.toIso8601String()],
+      );
+      final label =
+          '${mes.month.toString().padLeft(2, '0')}/${mes.year.toString().substring(2)}';
+      resultado[label] = (result.first['total'] as num).toDouble();
+    }
+
+    return resultado;
+  }
 }
