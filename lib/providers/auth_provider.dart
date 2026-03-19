@@ -10,20 +10,29 @@ final sesionActualProvider =
   return SesionNotifier(ref.read(usuarioRepositoryProvider));
 });
 
+/// Provides the current logged-in user's ID for data isolation
+final usuarioIdProvider = Provider<String>((ref) {
+  final sesion = ref.watch(sesionActualProvider);
+  return sesion?.id ?? '';
+});
+
 class SesionNotifier extends StateNotifier<Usuario?> {
   final UsuarioRepository _repo;
+  bool _cargada = false;
 
-  SesionNotifier(this._repo) : super(null) {
-    _cargarSesion();
-  }
+  SesionNotifier(this._repo) : super(null);
 
-  Future<void> _cargarSesion() async {
+  bool get sesionCargada => _cargada;
+
+  Future<void> cargarSesion() async {
+    if (_cargada) return;
     final prefs = await SharedPreferences.getInstance();
     final userId = prefs.getString('usuario_id');
     if (userId != null) {
       final usuarios = await _repo.obtenerTodos();
       state = usuarios.where((u) => u.id == userId).firstOrNull;
     }
+    _cargada = true;
   }
 
   Future<bool> login(String telefono, String password) async {

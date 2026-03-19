@@ -1,28 +1,27 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../constants/app_text_styles.dart';
 import '../../helpers/app_validators.dart';
-import '../../repositories/usuario_repository.dart';
+import '../../providers/auth_provider.dart';
 import '../../router/app_routes.dart';
 import '../../widgets/app_snack_bar.dart';
 import '../../widgets/loading_button.dart';
 
-class LoginScreen extends StatefulWidget {
+class LoginScreen extends ConsumerStatefulWidget {
   const LoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  ConsumerState<LoginScreen> createState() => _LoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
+class _LoginScreenState extends ConsumerState<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _telefonoCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
-  final _repo = UsuarioRepository();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
@@ -43,7 +42,7 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      final usuario = await _repo.login(
+      final ok = await ref.read(sesionActualProvider.notifier).login(
         _telefonoCtrl.text.trim(),
         _passwordCtrl.text,
       );
@@ -52,17 +51,9 @@ class _LoginScreenState extends State<LoginScreen> {
         return;
       }
 
-      if (usuario == null) {
+      if (!ok) {
         AppSnackBar.error(context, AppStrings.credencialesIncorrectas);
       } else {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('usuario_id', usuario.id);
-        await prefs.setString('usuario_nombre', usuario.nombre);
-        await prefs.setDouble('capital_inicial', usuario.capitalInicial);
-
-        if (!mounted) {
-          return;
-        }
         context.go(AppRoutes.dashboard);
       }
     } catch (e) {

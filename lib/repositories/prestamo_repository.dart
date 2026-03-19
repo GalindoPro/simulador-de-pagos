@@ -38,10 +38,12 @@ class PrestamoRepository {
     return Prestamo.fromMap(result.first);
   }
 
-  Future<List<Prestamo>> obtenerTodos() async {
+  Future<List<Prestamo>> obtenerTodos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.query(
       'prestamos',
+      where: 'registrado_por = ?',
+      whereArgs: [usuarioId],
       orderBy: 'fecha_creacion DESC',
     );
     return result.map((m) => Prestamo.fromMap(m)).toList();
@@ -58,36 +60,37 @@ class PrestamoRepository {
     return result.map((m) => Prestamo.fromMap(m)).toList();
   }
 
-  Future<List<Prestamo>> obtenerActivos() async {
+  Future<List<Prestamo>> obtenerActivos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.query(
       'prestamos',
-      where: "estado = 'activo'",
+      where: "estado = 'activo' AND registrado_por = ?",
+      whereArgs: [usuarioId],
       orderBy: 'fecha_vencimiento ASC',
     );
     return result.map((m) => Prestamo.fromMap(m)).toList();
   }
 
-  Future<List<Prestamo>> obtenerVencidos() async {
+  Future<List<Prestamo>> obtenerVencidos(String usuarioId) async {
     final db = await _db.database;
     final now = DateTime.now().toIso8601String();
     final result = await db.query(
       'prestamos',
-      where: "estado = 'activo' AND fecha_vencimiento < ?",
-      whereArgs: [now],
+      where: "estado = 'activo' AND fecha_vencimiento < ? AND registrado_por = ?",
+      whereArgs: [now, usuarioId],
     );
     return result.map((m) => Prestamo.fromMap(m)).toList();
   }
 
-  Future<List<Prestamo>> obtenerProximosAVencer(int dias) async {
+  Future<List<Prestamo>> obtenerProximosAVencer(int dias, String usuarioId) async {
     final db = await _db.database;
     final now = DateTime.now();
     final limite = now.add(Duration(days: dias)).toIso8601String();
     final result = await db.query(
       'prestamos',
       where:
-          "estado = 'activo' AND fecha_vencimiento >= ? AND fecha_vencimiento <= ?",
-      whereArgs: [now.toIso8601String(), limite],
+          "estado = 'activo' AND fecha_vencimiento >= ? AND fecha_vencimiento <= ? AND registrado_por = ?",
+      whereArgs: [now.toIso8601String(), limite, usuarioId],
       orderBy: 'fecha_vencimiento ASC',
     );
     return result.map((m) => Prestamo.fromMap(m)).toList();
@@ -151,41 +154,44 @@ class PrestamoRepository {
     );
   }
 
-  Future<int> contarActivos() async {
+  Future<int> contarActivos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.rawQuery(
-      "SELECT COUNT(*) as total FROM prestamos WHERE estado = 'activo'",
+      "SELECT COUNT(*) as total FROM prestamos WHERE estado = 'activo' AND registrado_por = ?",
+      [usuarioId],
     );
     return result.first['total'] as int;
   }
 
-  Future<int> contarVencidos() async {
+  Future<int> contarVencidos(String usuarioId) async {
     final db = await _db.database;
     final now = DateTime.now().toIso8601String();
     final result = await db.rawQuery(
-      "SELECT COUNT(*) as total FROM prestamos WHERE estado = 'activo' AND fecha_vencimiento < ?",
-      [now],
+      "SELECT COUNT(*) as total FROM prestamos WHERE estado = 'activo' AND fecha_vencimiento < ? AND registrado_por = ?",
+      [now, usuarioId],
     );
     return result.first['total'] as int;
   }
 
-  Future<double> sumarSaldoPendiente() async {
+  Future<double> sumarSaldoPendiente(String usuarioId) async {
     final db = await _db.database;
     final result = await db.rawQuery(
-      "SELECT COALESCE(SUM(saldo_pendiente), 0) as total FROM prestamos WHERE estado = 'activo'",
+      "SELECT COALESCE(SUM(saldo_pendiente), 0) as total FROM prestamos WHERE estado = 'activo' AND registrado_por = ?",
+      [usuarioId],
     );
     return (result.first['total'] as num).toDouble();
   }
 
-  Future<double> sumarTotalPrestado() async {
+  Future<double> sumarTotalPrestado(String usuarioId) async {
     final db = await _db.database;
     final result = await db.rawQuery(
-      'SELECT COALESCE(SUM(monto_original), 0) as total FROM prestamos',
+      'SELECT COALESCE(SUM(monto_original), 0) as total FROM prestamos WHERE registrado_por = ?',
+      [usuarioId],
     );
     return (result.first['total'] as num).toDouble();
   }
 
-  Future<Map<String, double>> prestamosPorMes(int meses) async {
+  Future<Map<String, double>> prestamosPorMes(int meses, String usuarioId) async {
     final db = await _db.database;
     final resultado = <String, double>{};
     final now = DateTime.now();
@@ -194,8 +200,8 @@ class PrestamoRepository {
       final mes = DateTime(now.year, now.month - i, 1);
       final finMes = DateTime(now.year, now.month - i + 1, 1);
       final result = await db.rawQuery(
-        "SELECT COALESCE(SUM(monto_original), 0) as total FROM prestamos WHERE fecha_inicio >= ? AND fecha_inicio < ?",
-        [mes.toIso8601String(), finMes.toIso8601String()],
+        "SELECT COALESCE(SUM(monto_original), 0) as total FROM prestamos WHERE registrado_por = ? AND fecha_inicio >= ? AND fecha_inicio < ?",
+        [usuarioId, mes.toIso8601String(), finMes.toIso8601String()],
       );
       final label =
           '${mes.month.toString().padLeft(2, '0')}/${mes.year.toString().substring(2)}';

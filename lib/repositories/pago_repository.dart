@@ -41,10 +41,12 @@ class PagoRepository {
     return Pago.fromMap(result.first);
   }
 
-  Future<List<Pago>> obtenerTodos() async {
+  Future<List<Pago>> obtenerTodos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.query(
       'pagos',
+      where: 'registrado_por = ?',
+      whereArgs: [usuarioId],
       orderBy: 'fecha_creacion DESC',
     );
     return result.map((m) => Pago.fromMap(m)).toList();
@@ -72,28 +74,30 @@ class PagoRepository {
     return result.map((m) => Pago.fromMap(m)).toList();
   }
 
-  Future<List<Pago>> obtenerRecientes(int limite) async {
+  Future<List<Pago>> obtenerRecientes(int limite, String usuarioId) async {
     final db = await _db.database;
     final result = await db.query(
       'pagos',
+      where: 'registrado_por = ?',
+      whereArgs: [usuarioId],
       orderBy: 'fecha_creacion DESC',
       limit: limite,
     );
     return result.map((m) => Pago.fromMap(m)).toList();
   }
 
-  Future<double> sumarCobradoMes() async {
+  Future<double> sumarCobradoMes(String usuarioId) async {
     final db = await _db.database;
     final now = DateTime.now();
     final inicioMes = DateTime(now.year, now.month, 1).toIso8601String();
     final result = await db.rawQuery(
-      "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE estado = 'completado' AND fecha >= ?",
-      [inicioMes],
+      "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE estado = 'completado' AND registrado_por = ? AND fecha >= ?",
+      [usuarioId, inicioMes],
     );
     return (result.first['total'] as num).toDouble();
   }
 
-  Future<double> sumarInteresesMes() async {
+  Future<double> sumarInteresesMes(String usuarioId) async {
     final db = await _db.database;
     final now = DateTime.now();
     final inicioMes = DateTime(now.year, now.month, 1).toIso8601String();
@@ -102,33 +106,34 @@ class PagoRepository {
       SELECT COALESCE(SUM(tp.interes), 0) as total
       FROM pagos p
       INNER JOIN tabla_pagos tp ON p.prestamo_id = tp.prestamo_id AND p.cuota_numero = tp.cuota_numero
-      WHERE p.estado = 'completado' AND p.fecha >= ?
+      WHERE p.estado = 'completado' AND p.registrado_por = ? AND p.fecha >= ?
       ''',
-      [inicioMes],
+      [usuarioId, inicioMes],
     );
     return (result.first['total'] as num).toDouble();
   }
 
-  Future<int> contarCompletadosMes() async {
+  Future<int> contarCompletadosMes(String usuarioId) async {
     final db = await _db.database;
     final now = DateTime.now();
     final inicioMes = DateTime(now.year, now.month, 1).toIso8601String();
     final result = await db.rawQuery(
-      "SELECT COUNT(*) as total FROM pagos WHERE estado = 'completado' AND fecha >= ?",
-      [inicioMes],
+      "SELECT COUNT(*) as total FROM pagos WHERE estado = 'completado' AND registrado_por = ? AND fecha >= ?",
+      [usuarioId, inicioMes],
     );
     return result.first['total'] as int;
   }
 
-  Future<double> sumarPendiente() async {
+  Future<double> sumarPendiente(String usuarioId) async {
     final db = await _db.database;
     final result = await db.rawQuery(
-      "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE estado = 'pendiente'",
+      "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE estado = 'pendiente' AND registrado_por = ?",
+      [usuarioId],
     );
     return (result.first['total'] as num).toDouble();
   }
 
-  Future<Map<String, double>> pagosPorMes(int meses) async {
+  Future<Map<String, double>> pagosPorMes(int meses, String usuarioId) async {
     final db = await _db.database;
     final resultado = <String, double>{};
     final now = DateTime.now();
@@ -137,8 +142,8 @@ class PagoRepository {
       final mes = DateTime(now.year, now.month - i, 1);
       final finMes = DateTime(now.year, now.month - i + 1, 1);
       final result = await db.rawQuery(
-        "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE estado = 'completado' AND fecha >= ? AND fecha < ?",
-        [mes.toIso8601String(), finMes.toIso8601String()],
+        "SELECT COALESCE(SUM(monto), 0) as total FROM pagos WHERE estado = 'completado' AND registrado_por = ? AND fecha >= ? AND fecha < ?",
+        [usuarioId, mes.toIso8601String(), finMes.toIso8601String()],
       );
       final label =
           '${mes.month.toString().padLeft(2, '0')}/${mes.year.toString().substring(2)}';

@@ -11,6 +11,7 @@ import '../../helpers/app_validators.dart';
 import '../../models/prestamo.dart';
 import '../../models/cuota_pago.dart';
 import '../../models/cliente.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/cliente_provider.dart';
 import '../../providers/prestamo_provider.dart';
 import '../../services/carpeta_service.dart';
@@ -99,6 +100,16 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
       return;
     }
 
+    final capitalDisponible =
+        ref.read(capitalDisponibleProvider).valueOrNull ?? 0;
+    if (_monto > capitalDisponible) {
+      AppSnackBar.advertencia(
+        context,
+        'Capital insuficiente. Disponible: ${AppFormatters.moneda(capitalDisponible)}',
+      );
+      return;
+    }
+
     final clientes = ref.read(clientesProvider).valueOrNull ?? [];
     final cliente =
         clientes.where((c) => c.id == _clienteId).firstOrNull;
@@ -173,6 +184,7 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
     try {
       final prestamoId = const Uuid().v4();
 
+      final usuarioId = ref.read(usuarioIdProvider);
       final prestamo = Prestamo(
         id: prestamoId,
         clienteId: _clienteId!,
@@ -188,6 +200,7 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
         notas: _notasCtrl.text.trim().isNotEmpty
             ? _notasCtrl.text.trim()
             : null,
+        registradoPor: usuarioId,
         fechaCreacion: DateTime.now(),
       );
 
@@ -231,6 +244,7 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
       }
 
       ref.invalidate(resumenFinancieroProvider);
+      ref.invalidate(capitalDisponibleProvider);
       AppSnackBar.exito(context, AppStrings.prestamoCreado);
       context.pop();
     } catch (e) {
@@ -258,6 +272,9 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
   @override
   Widget build(BuildContext context) {
     final clientesAsync = ref.watch(clientesProvider);
+    final capitalAsync = ref.watch(capitalDisponibleProvider);
+    final capitalDisponible = capitalAsync.valueOrNull ?? 0;
+    final excedeCapital = _monto > 0 && _monto > capitalDisponible;
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.nuevoPrestamo)),
@@ -380,6 +397,57 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
                 maxLines: 2,
               ),
               const SizedBox(height: 24),
+
+              // Capital disponible
+              Card(
+                color: excedeCapital ? AppColors.error.withValues(alpha: 0.1) : AppColors.successLight,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                  child: Row(
+                    children: [
+                      Icon(
+                        excedeCapital ? Icons.warning : Icons.account_balance_wallet,
+                        color: excedeCapital ? AppColors.error : AppColors.success,
+                        size: 20,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'Capital disponible: ${AppFormatters.moneda(capitalDisponible)}',
+                          style: AppTextStyles.bodySmall.copyWith(
+                            color: excedeCapital ? AppColors.error : AppColors.success,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              if (excedeCapital) ...[
+                const SizedBox(height: 8),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: AppColors.error.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: AppColors.error.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.block, color: AppColors.error, size: 20),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'El monto del préstamo (${AppFormatters.moneda(_monto)}) excede el capital disponible. No se puede generar este préstamo.',
+                          style: AppTextStyles.bodySmall.copyWith(color: AppColors.error),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 16),
 
               // Preview
               Card(

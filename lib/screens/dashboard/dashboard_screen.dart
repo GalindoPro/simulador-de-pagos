@@ -29,6 +29,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
 
   void _refrescarDashboard() {
     ref.invalidate(resumenFinancieroProvider);
+    ref.invalidate(capitalDisponibleProvider);
     ref.invalidate(pagosRecientesProvider(5));
     ref.invalidate(proximosAVencerProvider);
     ref.invalidate(clientesProvider);
@@ -43,7 +44,7 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     final clientesAsync = ref.watch(clientesProvider);
 
     final nombreUsuario = usuario?.nombre ?? 'Usuario';
-    final capital = usuario?.capitalInicial ?? 0;
+    final capitalAsync = ref.watch(capitalDisponibleProvider);
 
     return PopScope(
       canPop: false,
@@ -111,7 +112,11 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  '${AppStrings.capitalDisponible}: ${AppFormatters.moneda(capital)}',
+                  '${AppStrings.capitalDisponible}: ${capitalAsync.when(
+                  data: (c) => AppFormatters.moneda(c),
+                  loading: () => '...',
+                  error: (_, _) => 'Q 0.00',
+                )}',
                   style: AppTextStyles.moneda,
                 ),
                 const SizedBox(height: 24),

@@ -2,6 +2,7 @@ import 'usuario.dart';
 
 class Cliente {
   final String id;
+  final String usuarioId;
   final String nombre;
   final String apellido;
   final String telefono;
@@ -16,6 +17,7 @@ class Cliente {
 
   Cliente({
     required this.id,
+    required this.usuarioId,
     required this.nombre,
     required this.apellido,
     required this.telefono,
@@ -32,6 +34,7 @@ class Cliente {
   /// Factory con Title Case automático en nombre y apellido
   factory Cliente.crear({
     required String id,
+    required String usuarioId,
     required String nombre,
     required String apellido,
     required String telefono,
@@ -45,6 +48,7 @@ class Cliente {
   }) {
     return Cliente(
       id: id,
+      usuarioId: usuarioId,
       nombre: Usuario.toTitleCase(nombre),
       apellido: Usuario.toTitleCase(apellido),
       telefono: telefono,
@@ -61,6 +65,7 @@ class Cliente {
   factory Cliente.fromMap(Map<String, dynamic> map) {
     return Cliente(
       id: map['id'] as String,
+      usuarioId: map['usuario_id'] as String? ?? '',
       nombre: map['nombre'] as String,
       apellido: map['apellido'] as String,
       telefono: map['telefono'] as String,
@@ -78,6 +83,7 @@ class Cliente {
   Map<String, dynamic> toMap() {
     return {
       'id': id,
+      'usuario_id': usuarioId,
       'nombre': nombre,
       'apellido': apellido,
       'telefono': telefono,
@@ -94,6 +100,7 @@ class Cliente {
 
   Cliente copyWith({
     String? id,
+    String? usuarioId,
     String? nombre,
     String? apellido,
     String? telefono,
@@ -108,6 +115,7 @@ class Cliente {
   }) {
     return Cliente(
       id: id ?? this.id,
+      usuarioId: usuarioId ?? this.usuarioId,
       nombre: nombre ?? this.nombre,
       apellido: apellido ?? this.apellido,
       telefono: telefono ?? this.telefono,

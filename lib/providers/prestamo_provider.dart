@@ -5,6 +5,7 @@ import '../models/resumen_financiero.dart';
 import '../repositories/prestamo_repository.dart';
 import '../repositories/pago_repository.dart';
 import '../repositories/cliente_repository.dart';
+import 'auth_provider.dart';
 
 final prestamoRepositoryProvider = Provider((ref) => PrestamoRepository());
 
@@ -16,7 +17,8 @@ class PrestamosNotifier extends AsyncNotifier<List<Prestamo>> {
   @override
   Future<List<Prestamo>> build() async {
     final repo = ref.read(prestamoRepositoryProvider);
-    return repo.obtenerTodos();
+    final usuarioId = ref.watch(usuarioIdProvider);
+    return repo.obtenerTodos(usuarioId);
   }
 
   Future<void> crear(Prestamo prestamo, List<CuotaPago> cuotas) async {
@@ -77,7 +79,18 @@ final cuotasPrestamoProvider =
 final proximosAVencerProvider =
     FutureProvider<List<Prestamo>>((ref) async {
   final repo = ref.read(prestamoRepositoryProvider);
-  return repo.obtenerProximosAVencer(30);
+  final usuarioId = ref.watch(usuarioIdProvider);
+  return repo.obtenerProximosAVencer(30, usuarioId);
+});
+
+/// Capital disponible = capitalInicial - saldoPendiente de préstamos activos
+final capitalDisponibleProvider = FutureProvider<double>((ref) async {
+  final usuario = ref.watch(sesionActualProvider);
+  if (usuario == null) return 0;
+  final usuarioId = usuario.id;
+  final repo = ref.read(prestamoRepositoryProvider);
+  final saldoPendiente = await repo.sumarSaldoPendiente(usuarioId);
+  return usuario.capitalInicial - saldoPendiente;
 });
 
 final resumenFinancieroProvider =
@@ -85,18 +98,19 @@ final resumenFinancieroProvider =
   final prestamoRepo = ref.read(prestamoRepositoryProvider);
   final pagoRepo = PagoRepository();
   final clienteRepo = ClienteRepository();
+  final usuarioId = ref.watch(usuarioIdProvider);
 
   final results = await Future.wait([
-    pagoRepo.sumarCobradoMes(),
-    prestamoRepo.sumarTotalPrestado(),
-    prestamoRepo.sumarSaldoPendiente(),
-    pagoRepo.sumarInteresesMes(),
-    prestamoRepo.contarActivos(),
-    prestamoRepo.contarVencidos(),
-    clienteRepo.contarActivos(),
-    clienteRepo.contarNuevosMes(),
-    pagoRepo.pagosPorMes(6),
-    prestamoRepo.prestamosPorMes(6),
+    pagoRepo.sumarCobradoMes(usuarioId),
+    prestamoRepo.sumarTotalPrestado(usuarioId),
+    prestamoRepo.sumarSaldoPendiente(usuarioId),
+    pagoRepo.sumarInteresesMes(usuarioId),
+    prestamoRepo.contarActivos(usuarioId),
+    prestamoRepo.contarVencidos(usuarioId),
+    clienteRepo.contarActivos(usuarioId),
+    clienteRepo.contarNuevosMes(usuarioId),
+    pagoRepo.pagosPorMes(6, usuarioId),
+    prestamoRepo.prestamosPorMes(6, usuarioId),
   ]);
 
   final prestamosActivos = results[4] as int;

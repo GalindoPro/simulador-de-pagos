@@ -42,43 +42,47 @@ class ClienteRepository {
     return Cliente.fromMap(result.first);
   }
 
-  Future<List<Cliente>> obtenerActivos() async {
+  Future<List<Cliente>> obtenerActivos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.query(
       'clientes',
-      where: "activo = 1 AND estado = 'activo'",
+      where: "activo = 1 AND estado = 'activo' AND usuario_id = ?",
+      whereArgs: [usuarioId],
       orderBy: 'nombre ASC',
     );
     return result.map((m) => Cliente.fromMap(m)).toList();
   }
 
-  Future<List<Cliente>> obtenerInactivos() async {
-    final db = await _db.database;
-    final result = await db.query(
-      'clientes',
-      where: "activo = 1 AND (estado = 'inactivo' OR estado = 'finalizado')",
-      orderBy: 'nombre ASC',
-    );
-    return result.map((m) => Cliente.fromMap(m)).toList();
-  }
-
-  Future<List<Cliente>> obtenerTodos() async {
-    final db = await _db.database;
-    final result = await db.query(
-      'clientes',
-      where: 'activo = 1',
-      orderBy: 'nombre ASC',
-    );
-    return result.map((m) => Cliente.fromMap(m)).toList();
-  }
-
-  Future<List<Cliente>> buscar(String query) async {
+  Future<List<Cliente>> obtenerInactivos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.query(
       'clientes',
       where:
-          'activo = 1 AND (nombre LIKE ? OR apellido LIKE ? OR telefono LIKE ? OR dpi LIKE ?)',
-      whereArgs: ['%$query%', '%$query%', '%$query%', '%$query%'],
+          "activo = 1 AND (estado = 'inactivo' OR estado = 'finalizado') AND usuario_id = ?",
+      whereArgs: [usuarioId],
+      orderBy: 'nombre ASC',
+    );
+    return result.map((m) => Cliente.fromMap(m)).toList();
+  }
+
+  Future<List<Cliente>> obtenerTodos(String usuarioId) async {
+    final db = await _db.database;
+    final result = await db.query(
+      'clientes',
+      where: 'activo = 1 AND usuario_id = ?',
+      whereArgs: [usuarioId],
+      orderBy: 'nombre ASC',
+    );
+    return result.map((m) => Cliente.fromMap(m)).toList();
+  }
+
+  Future<List<Cliente>> buscar(String query, String usuarioId) async {
+    final db = await _db.database;
+    final result = await db.query(
+      'clientes',
+      where:
+          'activo = 1 AND usuario_id = ? AND (nombre LIKE ? OR apellido LIKE ? OR telefono LIKE ? OR dpi LIKE ?)',
+      whereArgs: [usuarioId, '%$query%', '%$query%', '%$query%', '%$query%'],
       orderBy: 'nombre ASC',
     );
     return result.map((m) => Cliente.fromMap(m)).toList();
@@ -94,21 +98,22 @@ class ClienteRepository {
     );
   }
 
-  Future<int> contarActivos() async {
+  Future<int> contarActivos(String usuarioId) async {
     final db = await _db.database;
     final result = await db.rawQuery(
-      "SELECT COUNT(*) as total FROM clientes WHERE activo = 1 AND estado = 'activo'",
+      "SELECT COUNT(*) as total FROM clientes WHERE activo = 1 AND estado = 'activo' AND usuario_id = ?",
+      [usuarioId],
     );
     return result.first['total'] as int;
   }
 
-  Future<int> contarNuevosMes() async {
+  Future<int> contarNuevosMes(String usuarioId) async {
     final db = await _db.database;
     final now = DateTime.now();
     final inicioMes = DateTime(now.year, now.month, 1).toIso8601String();
     final result = await db.rawQuery(
-      'SELECT COUNT(*) as total FROM clientes WHERE activo = 1 AND fecha_registro >= ?',
-      [inicioMes],
+      'SELECT COUNT(*) as total FROM clientes WHERE activo = 1 AND usuario_id = ? AND fecha_registro >= ?',
+      [usuarioId, inicioMes],
     );
     return result.first['total'] as int;
   }

@@ -12,6 +12,7 @@ import '../../helpers/app_validators.dart';
 import '../../helpers/dpi_input_formatter.dart';
 import '../../models/cliente.dart';
 import '../../models/usuario.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/cliente_provider.dart';
 import '../../services/carpeta_service.dart';
 import '../../services/whatsapp_service.dart';
@@ -122,8 +123,10 @@ class _FormClienteScreenState extends ConsumerState<FormClienteScreen> {
     });
 
     try {
+      final usuarioId = ref.read(usuarioIdProvider);
       final cliente = Cliente.crear(
         id: _isEditing ? widget.clienteId! : const Uuid().v4(),
+        usuarioId: usuarioId,
         nombre: _nombreCtrl.text.trim(),
         apellido: _apellidoCtrl.text.trim(),
         telefono: _telefonoCtrl.text.trim(),

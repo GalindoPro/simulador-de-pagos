@@ -11,6 +11,7 @@ import '../../constants/app_text_styles.dart';
 import '../../helpers/app_formatters.dart';
 import '../../helpers/app_validators.dart';
 import '../../models/pago.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/cliente_provider.dart';
 import '../../providers/prestamo_provider.dart';
 import '../../providers/pago_provider.dart';
@@ -164,6 +165,7 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
         }
       }
 
+      final usuarioId = ref.read(usuarioIdProvider);
       final pago = Pago(
         id: pagoId,
         clienteId: _clienteId!,
@@ -177,6 +179,7 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
         notas: _notasCtrl.text.trim().isNotEmpty
             ? _notasCtrl.text.trim()
             : null,
+        registradoPor: usuarioId,
         fechaCreacion: DateTime.now(),
       );
 

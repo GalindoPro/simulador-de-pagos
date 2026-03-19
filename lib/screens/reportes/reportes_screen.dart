@@ -6,9 +6,11 @@ import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../constants/app_text_styles.dart';
 import '../../helpers/app_formatters.dart';
+import '../../providers/auth_provider.dart';
 import '../../providers/prestamo_provider.dart';
 import '../../router/app_routes.dart';
 import '../../services/carpeta_service.dart';
+import '../../widgets/app_snack_bar.dart';
 import '../../widgets/stat_card.dart';
 import '../../widgets/app_error_widget.dart';
 
@@ -32,6 +34,50 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
     setState(() {
       _mesActual = DateTime(_mesActual.year, _mesActual.month + 1);
     });
+  }
+
+  bool _exportando = false;
+
+  Future<void> _exportarPDF(dynamic r) async {
+    if (_exportando) return;
+    setState(() => _exportando = true);
+
+    try {
+      final usuario = ref.read(sesionActualProvider);
+      final capitalDisp =
+          ref.read(capitalDisponibleProvider).valueOrNull ?? 0;
+
+      final path = await CarpetaService.instance.generarReporteFinanciero(
+        nombreUsuario: usuario?.nombre ?? 'Usuario',
+        capitalInicial: usuario?.capitalInicial ?? 0,
+        capitalDisponible: capitalDisp,
+        totalCobradoMes: r.totalCobradoMes,
+        totalPrestado: r.totalPrestado,
+        saldoPendiente: r.saldoPendiente,
+        interesDelMes: r.interesDelMes,
+        prestamosActivos: r.prestamosActivos,
+        prestamosVencidos: r.prestamosVencidos,
+        totalClientes: r.totalClientes,
+        clientesNuevosMes: r.clientesNuevosMes,
+        tasaMorosidad: r.tasaMorosidad,
+        pagosPorMes: r.pagosPorMes,
+        prestamosPorMes: r.prestamosPorMes,
+      );
+
+      await CarpetaService.instance.compartirArchivo(path);
+
+      if (mounted) {
+        AppSnackBar.exito(context, 'Reporte PDF generado y compartido');
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Error al generar PDF: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _exportando = false);
+      }
+    }
   }
 
   @override
@@ -152,11 +198,15 @@ class _ReportesScreenState extends ConsumerState<ReportesScreen> {
 
               // Botones
               ElevatedButton.icon(
-                onPressed: () {
-                  // TODO: Generar reporte PDF completo
-                },
-                icon: const Icon(Icons.picture_as_pdf),
-                label: const Text(AppStrings.exportarPDF),
+                onPressed: _exportando ? null : () => _exportarPDF(r),
+                icon: _exportando
+                    ? const SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(Icons.picture_as_pdf),
+                label: Text(_exportando ? 'Generando...' : AppStrings.exportarPDF),
               ),
               const SizedBox(height: 12),
               OutlinedButton.icon(

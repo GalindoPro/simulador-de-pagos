@@ -262,6 +262,172 @@ class CarpetaService {
     return path;
   }
 
+  Future<String> generarReporteFinanciero({
+    required String nombreUsuario,
+    required double capitalInicial,
+    required double capitalDisponible,
+    required double totalCobradoMes,
+    required double totalPrestado,
+    required double saldoPendiente,
+    required double interesDelMes,
+    required int prestamosActivos,
+    required int prestamosVencidos,
+    required int totalClientes,
+    required int clientesNuevosMes,
+    required double tasaMorosidad,
+    required Map<String, double> pagosPorMes,
+    required Map<String, double> prestamosPorMes,
+  }) async {
+    final base = await _basePath;
+    final carpeta = Directory('$base/Reportes');
+    if (!await carpeta.exists()) {
+      await carpeta.create(recursive: true);
+    }
+    final fecha = DateTime.now();
+    final path =
+        '${carpeta.path}/reporte_${fecha.year}_${fecha.month.toString().padLeft(2, '0')}.pdf';
+
+    final pdf = pw.Document();
+    pdf.addPage(
+      pw.MultiPage(
+        pageFormat: PdfPageFormat.letter,
+        build: (context) {
+          return [
+            pw.Header(
+              level: 0,
+              child: pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text('Capital Pro - Reporte Financiero',
+                      style: pw.TextStyle(
+                          fontSize: 18, fontWeight: pw.FontWeight.bold)),
+                  pw.Text(AppFormatters.fechaLarga(fecha),
+                      style: const pw.TextStyle(fontSize: 10)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 10),
+            _pdfRow('Prestamista', nombreUsuario),
+            pw.SizedBox(height: 20),
+
+            // Capital
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Capital',
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+                  _pdfRow(
+                      'Capital Inicial', AppFormatters.moneda(capitalInicial)),
+                  _pdfRow('Capital Disponible',
+                      AppFormatters.moneda(capitalDisponible)),
+                  _pdfRow(
+                      'Total Prestado', AppFormatters.moneda(totalPrestado)),
+                  _pdfRow('Saldo Pendiente (activos)',
+                      AppFormatters.moneda(saldoPendiente)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+
+            // Resumen del mes
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Resumen del Mes',
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+                  _pdfRow('Cobrado este mes',
+                      AppFormatters.moneda(totalCobradoMes)),
+                  _pdfRow('Intereses del mes',
+                      AppFormatters.moneda(interesDelMes)),
+                  _pdfRow('Clientes nuevos', '$clientesNuevosMes'),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 16),
+
+            // Préstamos
+            pw.Container(
+              padding: const pw.EdgeInsets.all(12),
+              decoration: pw.BoxDecoration(
+                border: pw.Border.all(color: PdfColors.grey400),
+                borderRadius: pw.BorderRadius.circular(6),
+              ),
+              child: pw.Column(
+                crossAxisAlignment: pw.CrossAxisAlignment.start,
+                children: [
+                  pw.Text('Préstamos',
+                      style: pw.TextStyle(
+                          fontSize: 14, fontWeight: pw.FontWeight.bold)),
+                  pw.SizedBox(height: 8),
+                  _pdfRow('Activos', '$prestamosActivos'),
+                  _pdfRow('Vencidos', '$prestamosVencidos'),
+                  _pdfRow('Total Clientes', '$totalClientes'),
+                  _pdfRow('Tasa de Morosidad',
+                      AppFormatters.porcentaje(tasaMorosidad)),
+                ],
+              ),
+            ),
+            pw.SizedBox(height: 20),
+
+            // Tabla ingresos por mes
+            if (pagosPorMes.isNotEmpty) ...[
+              pw.Text('Ingresos por Mes (últimos 6 meses)',
+                  style: pw.TextStyle(
+                      fontSize: 14, fontWeight: pw.FontWeight.bold)),
+              pw.SizedBox(height: 8),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(fontWeight: pw.FontWeight.bold),
+                headerDecoration:
+                    const pw.BoxDecoration(color: PdfColors.grey300),
+                cellAlignments: {
+                  0: pw.Alignment.center,
+                  1: pw.Alignment.centerRight,
+                  2: pw.Alignment.centerRight,
+                },
+                headers: ['Mes', 'Ingresos', 'Prestado'],
+                data: pagosPorMes.keys.map((mes) {
+                  return [
+                    mes,
+                    AppFormatters.moneda(pagosPorMes[mes] ?? 0),
+                    AppFormatters.moneda(prestamosPorMes[mes] ?? 0),
+                  ];
+                }).toList(),
+              ),
+            ],
+
+            pw.SizedBox(height: 30),
+            pw.Divider(),
+            pw.SizedBox(height: 10),
+            pw.Text(
+              'Generado el ${AppFormatters.fechaLarga(fecha)} — Capital Pro',
+              style: const pw.TextStyle(fontSize: 10, color: PdfColors.grey600),
+            ),
+          ];
+        },
+      ),
+    );
+
+    final file = File(path);
+    await file.writeAsBytes(await pdf.save());
+    return path;
+  }
+
   Future<void> compartirArchivo(String path) async {
     await Share.shareXFiles([XFile(path)]);
   }

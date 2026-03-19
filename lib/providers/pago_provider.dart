@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/pago.dart';
 import '../repositories/pago_repository.dart';
+import 'auth_provider.dart';
 
 final pagoRepositoryProvider = Provider((ref) => PagoRepository());
 
@@ -43,7 +44,8 @@ class PagosNotifier extends AsyncNotifier<List<Pago>> {
   @override
   Future<List<Pago>> build() async {
     final repo = ref.read(pagoRepositoryProvider);
-    return repo.obtenerTodos();
+    final usuarioId = ref.watch(usuarioIdProvider);
+    return repo.obtenerTodos(usuarioId);
   }
 
   Future<void> crear(Pago pago) async {
@@ -111,7 +113,8 @@ final pagosFiltradosProvider =
 final pagosRecientesProvider =
     FutureProvider.family<List<Pago>, int>((ref, limite) async {
   final repo = ref.read(pagoRepositoryProvider);
-  return repo.obtenerRecientes(limite);
+  final usuarioId = ref.watch(usuarioIdProvider);
+  return repo.obtenerRecientes(limite, usuarioId);
 });
 
 final pagosPorClienteProvider =
@@ -122,9 +125,10 @@ final pagosPorClienteProvider =
 
 final resumenPagosProvider = FutureProvider((ref) async {
   final repo = ref.read(pagoRepositoryProvider);
-  final cobrado = await repo.sumarCobradoMes();
-  final pendiente = await repo.sumarPendiente();
-  final completados = await repo.contarCompletadosMes();
+  final usuarioId = ref.watch(usuarioIdProvider);
+  final cobrado = await repo.sumarCobradoMes(usuarioId);
+  final pendiente = await repo.sumarPendiente(usuarioId);
+  final completados = await repo.contarCompletadosMes(usuarioId);
 
   return {
     'cobrado': cobrado,

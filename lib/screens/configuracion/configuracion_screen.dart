@@ -4,11 +4,16 @@ import 'package:go_router/go_router.dart';
 import '../../constants/app_colors.dart';
 import '../../constants/app_strings.dart';
 import '../../constants/app_text_styles.dart';
+import '../../helpers/app_formatters.dart';
 import '../../helpers/app_validators.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/cliente_provider.dart';
+import '../../providers/prestamo_provider.dart';
+import '../../providers/pago_provider.dart';
 import '../../router/app_routes.dart';
 import '../../services/carpeta_service.dart';
 import '../../widgets/app_snack_bar.dart';
+import '../../widgets/cliente_avatar.dart';
 import '../../widgets/confirm_dialog.dart';
 import '../../widgets/loading_button.dart';
 
@@ -87,10 +92,43 @@ class ConfiguracionScreen extends ConsumerWidget {
                     onTap: () => _cambiarNombre(context, ref),
                   ),
                   ListTile(
+                    leading: const Icon(Icons.attach_money),
+                    title: const Text('Editar Capital'),
+                    subtitle: Text(
+                      AppFormatters.moneda(usuario?.capitalInicial ?? 0),
+                      style: AppTextStyles.bodySmall,
+                    ),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _editarCapital(context, ref),
+                  ),
+                  ListTile(
                     leading: const Icon(Icons.lock),
                     title: const Text(AppStrings.cambiarPassword),
                     trailing: const Icon(Icons.chevron_right),
                     onTap: () => _cambiarPassword(context, ref),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Administración de clientes
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Administración',
+                      style: AppTextStyles.titleMedium),
+                  const SizedBox(height: 12),
+                  ListTile(
+                    leading: const Icon(Icons.people, color: AppColors.error),
+                    title: const Text('Eliminar Clientes'),
+                    subtitle: const Text('Gestionar y eliminar clientes'),
+                    trailing: const Icon(Icons.chevron_right),
+                    onTap: () => _mostrarEliminarClientes(context, ref),
                   ),
                 ],
               ),
@@ -162,6 +200,11 @@ class ConfiguracionScreen extends ConsumerWidget {
               );
               if (confirm && context.mounted) {
                 await ref.read(sesionActualProvider.notifier).logout();
+                ref.invalidate(clientesProvider);
+                ref.invalidate(prestamosProvider);
+                ref.invalidate(pagosProvider);
+                ref.invalidate(resumenFinancieroProvider);
+                ref.invalidate(resumenPagosProvider);
                 if (context.mounted) {
                   context.go(AppRoutes.login);
                 }
@@ -219,6 +262,155 @@ class ConfiguracionScreen extends ConsumerWidget {
             child: const Text(AppStrings.guardar),
           ),
         ],
+      ),
+    );
+  }
+
+  void _editarCapital(BuildContext context, WidgetRef ref) {
+    final usuario = ref.read(sesionActualProvider);
+    final controller = TextEditingController(
+      text: usuario?.capitalInicial.toStringAsFixed(0) ?? '0',
+    );
+    final formKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Editar Capital'),
+        content: Form(
+          key: formKey,
+          child: TextFormField(
+            controller: controller,
+            decoration: const InputDecoration(
+              labelText: 'Capital disponible',
+              prefixText: 'Q ',
+              prefixIcon: Icon(Icons.attach_money),
+            ),
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Ingresa un monto';
+              final monto = double.tryParse(v.replaceAll(',', ''));
+              if (monto == null || monto < 0) return 'Monto inválido';
+              return null;
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text(AppStrings.cancelar),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (formKey.currentState!.validate()) {
+                final monto = double.parse(
+                    controller.text.trim().replaceAll(',', ''));
+                await ref
+                    .read(sesionActualProvider.notifier)
+                    .actualizarCapital(monto);
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                  AppSnackBar.exito(context, 'Capital actualizado');
+                }
+              }
+            },
+            child: const Text(AppStrings.guardar),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _mostrarEliminarClientes(BuildContext context, WidgetRef ref) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) => DraggableScrollableSheet(
+        initialChildSize: 0.6,
+        minChildSize: 0.3,
+        maxChildSize: 0.9,
+        expand: false,
+        builder: (_, scrollController) {
+          final clientesAsync = ref.watch(clientesProvider);
+
+          return Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    const Icon(Icons.people, color: AppColors.error),
+                    const SizedBox(width: 8),
+                    Text('Eliminar Clientes',
+                        style: AppTextStyles.titleMedium),
+                    const Spacer(),
+                    IconButton(
+                      icon: const Icon(Icons.close),
+                      onPressed: () => Navigator.pop(ctx),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1),
+              Expanded(
+                child: clientesAsync.when(
+                  data: (clientes) {
+                    if (clientes.isEmpty) {
+                      return const Center(
+                        child: Text('No hay clientes registrados'),
+                      );
+                    }
+                    return ListView.builder(
+                      controller: scrollController,
+                      itemCount: clientes.length,
+                      itemBuilder: (_, i) {
+                        final c = clientes[i];
+                        return ListTile(
+                          leading: ClienteAvatar(
+                            nombre: c.nombre,
+                            apellido: c.apellido,
+                            fotoPath: c.fotoPath,
+                          ),
+                          title: Text(c.nombreCompleto),
+                          subtitle: Text(c.telefono,
+                              style: AppTextStyles.bodySmall),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete,
+                                color: AppColors.error),
+                            onPressed: () async {
+                              final confirm = await ConfirmDialog.show(
+                                context,
+                                titulo: 'Eliminar Cliente',
+                                mensaje:
+                                    '¿Eliminar a ${c.nombreCompleto}? Esta acción no se puede deshacer.',
+                                textoConfirmar: AppStrings.eliminar,
+                              );
+                              if (confirm) {
+                                await ref
+                                    .read(clientesProvider.notifier)
+                                    .eliminar(c.id);
+                                if (context.mounted) {
+                                  AppSnackBar.exito(context,
+                                      '${c.nombreCompleto} eliminado');
+                                }
+                              }
+                            },
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () =>
+                      const Center(child: CircularProgressIndicator()),
+                  error: (e, _) => Center(child: Text(e.toString())),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/cliente.dart';
 import '../repositories/cliente_repository.dart';
+import 'auth_provider.dart';
 
 final clienteRepositoryProvider = Provider((ref) => ClienteRepository());
 
@@ -12,7 +13,8 @@ class ClientesNotifier extends AsyncNotifier<List<Cliente>> {
   @override
   Future<List<Cliente>> build() async {
     final repo = ref.read(clienteRepositoryProvider);
-    return repo.obtenerTodos();
+    final usuarioId = ref.watch(usuarioIdProvider);
+    return repo.obtenerTodos(usuarioId);
   }
 
   Future<void> crear(Cliente cliente) async {

@@ -21,8 +21,9 @@ class DatabaseHelper {
 
     return await openDatabase(
       path,
-      version: 1,
+      version: 2,
       onCreate: _createDB,
+      onUpgrade: _upgradeDB,
     );
   }
 
@@ -52,6 +53,7 @@ class DatabaseHelper {
     await db.execute('''
       CREATE TABLE clientes (
         id                  TEXT PRIMARY KEY,
+        usuario_id          TEXT NOT NULL,
         nombre              TEXT NOT NULL,
         apellido            TEXT NOT NULL,
         telefono            TEXT NOT NULL,
@@ -62,7 +64,8 @@ class DatabaseHelper {
         foto_path           TEXT,
         fecha_registro      TEXT NOT NULL,
         estado              TEXT DEFAULT 'activo',
-        activo              INTEGER DEFAULT 1
+        activo              INTEGER DEFAULT 1,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
       )
     ''');
 
@@ -121,6 +124,34 @@ class DatabaseHelper {
         FOREIGN KEY (prestamo_id) REFERENCES prestamos(id)
       )
     ''');
+  }
+
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      // Add usuario_id to clientes for user isolation
+      await db.execute(
+          "ALTER TABLE clientes ADD COLUMN usuario_id TEXT NOT NULL DEFAULT ''");
+
+      // Assign existing clientes to the first user found
+      final users = await db.query('usuarios', limit: 1);
+      if (users.isNotEmpty) {
+        final firstUserId = users.first['id'] as String;
+        await db.update('clientes', {'usuario_id': firstUserId});
+      }
+
+      // Assign existing prestamos without registrado_por
+      if (users.isNotEmpty) {
+        final firstUserId = users.first['id'] as String;
+        await db.rawUpdate(
+          "UPDATE prestamos SET registrado_por = ? WHERE registrado_por IS NULL OR registrado_por = ''",
+          [firstUserId],
+        );
+        await db.rawUpdate(
+          "UPDATE pagos SET registrado_por = ? WHERE registrado_por IS NULL OR registrado_por = ''",
+          [firstUserId],
+        );
+      }
+    }
   }
 
   Future<void> close() async {
