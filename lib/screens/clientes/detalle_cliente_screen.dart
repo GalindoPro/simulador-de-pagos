@@ -89,10 +89,13 @@ class _DetalleClienteScreenState extends ConsumerState<DetalleClienteScreen> {
                         const Icon(Icons.check_circle,
                             color: AppColors.success),
                         const SizedBox(width: 8),
-                        Text(
-                          'Préstamo finalizado — Apto para nuevo crédito',
-                          style: AppTextStyles.bodySmall
-                              .copyWith(color: AppColors.success),
+                        Expanded(
+                          child: Text(
+                            'Préstamo finalizado — Apto para nuevo crédito',
+                            style: AppTextStyles.bodySmall
+                                .copyWith(color: AppColors.success),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -107,9 +110,12 @@ class _DetalleClienteScreenState extends ConsumerState<DetalleClienteScreen> {
                         const Icon(Icons.person_off,
                             color: AppColors.textSecondary),
                         const SizedBox(width: 8),
-                        Text(
-                          'Sin préstamos activos',
-                          style: AppTextStyles.bodySmall,
+                        Expanded(
+                          child: Text(
+                            'Sin préstamos activos',
+                            style: AppTextStyles.bodySmall,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ],
                     ),
@@ -191,7 +197,12 @@ class _DetalleClienteScreenState extends ConsumerState<DetalleClienteScreen> {
     return ListTile(
       leading: Icon(icon, color: AppColors.primary),
       title: Text(label, style: AppTextStyles.labelMedium),
-      subtitle: Text(value, style: AppTextStyles.bodyMedium),
+      subtitle: Text(
+        value,
+        style: AppTextStyles.bodyMedium,
+        overflow: TextOverflow.ellipsis,
+        maxLines: 2,
+      ),
     );
   }
 }

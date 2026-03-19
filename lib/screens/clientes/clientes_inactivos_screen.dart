@@ -48,31 +48,37 @@ class ClientesInactivosScreen extends ConsumerWidget {
                   AppFormatters.telefono(c.telefono),
                   style: AppTextStyles.bodySmall,
                 ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: esFinalizado
-                            ? AppColors.successLight
-                            : AppColors.background,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        esFinalizado ? 'Finalizado' : 'Inactivo',
-                        style: AppTextStyles.labelSmall.copyWith(
-                          color: esFinalizado
-                              ? AppColors.success
-                              : AppColors.textSecondary,
-                          fontWeight: FontWeight.bold,
+                trailing: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 130),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 8, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: esFinalizado
+                                ? AppColors.successLight
+                                : AppColors.background,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            esFinalizado ? 'Finalizado' : 'Inactivo',
+                            style: AppTextStyles.labelSmall.copyWith(
+                              color: esFinalizado
+                                  ? AppColors.success
+                                  : AppColors.textSecondary,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
                       ),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.chevron_right),
-                  ],
+                      const SizedBox(width: 4),
+                      const Icon(Icons.chevron_right, size: 20),
+                    ],
+                  ),
                 ),
                 onTap: () => context.push('/clientes/${c.id}'),
               );

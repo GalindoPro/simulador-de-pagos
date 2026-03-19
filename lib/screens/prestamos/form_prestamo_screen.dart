@@ -425,7 +425,10 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.bodyMedium),
+          Flexible(
+            child: Text(label, style: AppTextStyles.bodyMedium),
+          ),
+          const SizedBox(width: 8),
           Text(valor,
               style: AppTextStyles.titleSmall),
         ],
