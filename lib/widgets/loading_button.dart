@@ -43,10 +43,9 @@ class LoadingButton extends StatelessWidget {
                     const SizedBox(width: 8),
                   ],
                   Flexible(
-                    child: Text(
-                      texto,
-                      overflow: TextOverflow.ellipsis,
-                      maxLines: 1,
+                    child: FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(texto),
                     ),
                   ),
                 ],
