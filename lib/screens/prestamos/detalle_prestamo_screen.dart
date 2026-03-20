@@ -51,20 +51,26 @@ class _DetallePrestamoScreenState
   }
 
   void _editarPrestamo(Prestamo prestamo) async {
-    // Obtener cuotas pagadas para saber el estado actual
     final cuotas = await ref.read(
         cuotasPrestamoProvider(prestamo.id).future);
     final cuotasPagadas = cuotas.where((c) => c.pagado).length;
     final capitalPagado = cuotas
         .where((c) => c.pagado)
         .fold<double>(0, (sum, c) => sum + c.capital);
-    final saldoActual = prestamo.montoOriginal - capitalPagado;
+    final interesPagado = cuotas
+        .where((c) => c.pagado)
+        .fold<double>(0, (sum, c) => sum + c.interes);
+    final saldoCapital = prestamo.montoOriginal - capitalPagado;
 
     final tasaCtrl = TextEditingController(
         text: prestamo.tasaInteres.toString());
     final garantiaCtrl = TextEditingController(text: prestamo.garantia ?? '');
     final notasCtrl = TextEditingController(text: prestamo.notas ?? '');
-    int nuevoPlazo = prestamo.plazoMeses;
+    final minPlazo = cuotasPagadas + 1;
+    int nuevoPlazo = prestamo.plazoMeses < minPlazo
+        ? minPlazo
+        : prestamo.plazoMeses;
+    bool cancelarTodo = false;
 
     if (!mounted) return;
 
@@ -77,18 +83,20 @@ class _DetallePrestamoScreenState
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setModalState) {
           final nuevaTasa = double.tryParse(tasaCtrl.text) ?? prestamo.tasaInteres;
+
+          // Cálculo de cancelación total
+          final montoCancelacion = saldoCapital + (saldoCapital * (nuevaTasa / 100));
+
+          // Cálculo de edición de plazo
           final cuotasRestantes = nuevoPlazo - cuotasPagadas;
-          final interesRestante = saldoActual * (nuevaTasa / 100) * cuotasRestantes;
+          final interesRestante = saldoCapital * (nuevaTasa / 100) * cuotasRestantes;
           final nuevaCuota = cuotasRestantes > 0
-              ? (saldoActual + interesRestante) / cuotasRestantes
+              ? (saldoCapital + interesRestante) / cuotasRestantes
               : 0.0;
-          final nuevoTotal = capitalPagado +
-              cuotas.where((c) => c.pagado).fold<double>(0, (s, c) => s + c.interes) +
-              saldoActual + interesRestante;
 
           return Padding(
             padding: EdgeInsets.fromLTRB(
-                24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + 24),
+                24, 24, 24, MediaQuery.of(ctx).viewInsets.bottom + MediaQuery.of(ctx).padding.bottom + 24),
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -99,81 +107,166 @@ class _DetallePrestamoScreenState
                       textAlign: TextAlign.center),
                   const SizedBox(height: 8),
                   Text(
-                    '$cuotasPagadas de ${prestamo.plazoMeses} cuotas pagadas · Saldo: ${AppFormatters.moneda(saldoActual)}',
+                    '$cuotasPagadas de ${prestamo.plazoMeses} cuotas pagadas · Saldo capital: ${AppFormatters.moneda(saldoCapital)}',
                     style: AppTextStyles.bodySmall,
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
-                  // Tasa
-                  TextField(
-                    controller: tasaCtrl,
-                    decoration: const InputDecoration(
-                      labelText: 'Tasa de interés (%)',
-                      prefixIcon: Icon(Icons.percent),
-                      suffixText: '%',
+                  // Opción: Cancelar todo
+                  Card(
+                    color: cancelarTodo
+                        ? AppColors.success.withValues(alpha: 0.1)
+                        : null,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: BorderSide(
+                        color: cancelarTodo
+                            ? AppColors.success
+                            : AppColors.divider,
+                        width: cancelarTodo ? 2 : 1,
+                      ),
                     ),
-                    keyboardType:
-                        const TextInputType.numberWithOptions(decimal: true),
-                    onChanged: (_) => setModalState(() {}),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(12),
+                      onTap: () => setModalState(() {
+                        cancelarTodo = !cancelarTodo;
+                      }),
+                      child: Padding(
+                        padding: const EdgeInsets.all(12),
+                        child: Row(
+                          children: [
+                            Icon(
+                              cancelarTodo
+                                  ? Icons.check_circle
+                                  : Icons.radio_button_unchecked,
+                              color: cancelarTodo
+                                  ? AppColors.success
+                                  : AppColors.disabled,
+                            ),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text('Cancelar deuda completa',
+                                      style: AppTextStyles.titleSmall),
+                                  const SizedBox(height: 4),
+                                  Text(
+                                    'El cliente paga todo y queda finiquito',
+                                    style: AppTextStyles.caption,
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Flexible(
+                              child: FittedBox(
+                                fit: BoxFit.scaleDown,
+                                child: Text(
+                                  AppFormatters.moneda(montoCancelacion),
+                                  style: AppTextStyles.titleSmall.copyWith(
+                                    color: AppColors.success,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
 
-                  // Plazo
-                  Text(
-                    'Nuevo plazo: $nuevoPlazo meses ($cuotasRestantes restantes)',
-                    style: AppTextStyles.labelLarge,
-                  ),
-                  Slider(
-                    value: nuevoPlazo.toDouble(),
-                    min: (cuotasPagadas + 1).toDouble(),
-                    max: 60,
-                    divisions: 60 - cuotasPagadas - 1 > 0
-                        ? 60 - cuotasPagadas - 1
-                        : 1,
-                    label: '$nuevoPlazo meses',
-                    onChanged: (v) {
-                      setModalState(() {
-                        nuevoPlazo = v.round();
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 8),
+                  if (cancelarTodo) ...[
+                    // Preview cancelación
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.successLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          _previewRow('Capital pendiente',
+                              AppFormatters.moneda(saldoCapital)),
+                          _previewRow('Interés (1 mes)',
+                              AppFormatters.moneda(saldoCapital * (nuevaTasa / 100))),
+                          const Divider(),
+                          _previewRow('Total a cancelar',
+                              AppFormatters.moneda(montoCancelacion)),
+                          _previewRow('Ya pagado (capital + interés)',
+                              AppFormatters.moneda(capitalPagado + interesPagado)),
+                        ],
+                      ),
+                    ),
+                  ] else ...[
+                    // Tasa
+                    TextField(
+                      controller: tasaCtrl,
+                      decoration: const InputDecoration(
+                        labelText: 'Tasa de interés (%)',
+                        prefixIcon: Icon(Icons.percent),
+                        suffixText: '%',
+                      ),
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      onChanged: (_) => setModalState(() {}),
+                    ),
+                    const SizedBox(height: 16),
 
-                  // Preview
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: AppColors.infoLight,
-                      borderRadius: BorderRadius.circular(8),
+                    // Plazo
+                    Text(
+                      'Nuevo plazo: $nuevoPlazo meses ($cuotasRestantes restantes)',
+                      style: AppTextStyles.labelLarge,
                     ),
-                    child: Column(
-                      children: [
-                        _previewRow('Nueva cuota', AppFormatters.moneda(nuevaCuota)),
-                        _previewRow('Cuotas restantes', '$cuotasRestantes'),
-                        _previewRow('Total a pagar', AppFormatters.moneda(nuevoTotal)),
-                      ],
+                    Slider(
+                      value: nuevoPlazo.toDouble(),
+                      min: minPlazo.toDouble(),
+                      max: 60,
+                      divisions: (60 - minPlazo) > 0 ? 60 - minPlazo : 1,
+                      label: '$nuevoPlazo meses',
+                      onChanged: (v) {
+                        setModalState(() {
+                          nuevoPlazo = v.round();
+                        });
+                      },
                     ),
-                  ),
-                  const SizedBox(height: 16),
+                    const SizedBox(height: 8),
 
-                  // Garantía y notas
-                  TextField(
-                    controller: garantiaCtrl,
-                    decoration: const InputDecoration(
-                      labelText: AppStrings.garantia,
-                      prefixIcon: Icon(Icons.shield),
+                    // Preview edición
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppColors.infoLight,
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Column(
+                        children: [
+                          _previewRow('Nueva cuota', AppFormatters.moneda(nuevaCuota)),
+                          _previewRow('Cuotas restantes', '$cuotasRestantes'),
+                        ],
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  TextField(
-                    controller: notasCtrl,
-                    decoration: const InputDecoration(
-                      labelText: AppStrings.notas,
-                      prefixIcon: Icon(Icons.note),
+                    const SizedBox(height: 16),
+
+                    // Garantía y notas
+                    TextField(
+                      controller: garantiaCtrl,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.garantia,
+                        prefixIcon: Icon(Icons.shield),
+                      ),
                     ),
-                    maxLines: 2,
-                  ),
+                    const SizedBox(height: 12),
+                    TextField(
+                      controller: notasCtrl,
+                      decoration: const InputDecoration(
+                        labelText: AppStrings.notas,
+                        prefixIcon: Icon(Icons.note),
+                      ),
+                      maxLines: 2,
+                    ),
+                  ],
                   const SizedBox(height: 24),
                   Row(
                     children: [
@@ -186,18 +279,29 @@ class _DetallePrestamoScreenState
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
+                          style: cancelarTodo
+                              ? ElevatedButton.styleFrom(
+                                  backgroundColor: AppColors.success)
+                              : null,
                           onPressed: () async {
-                            await _guardarEdicion(
-                              ctx,
-                              prestamo,
-                              cuotas,
-                              nuevaTasa,
-                              nuevoPlazo,
-                              garantiaCtrl.text.trim(),
-                              notasCtrl.text.trim(),
-                            );
+                            if (cancelarTodo) {
+                              await _cancelarDeudaCompleta(
+                                ctx, prestamo, cuotas, nuevaTasa);
+                            } else {
+                              await _guardarEdicion(
+                                ctx, prestamo, cuotas, nuevaTasa,
+                                nuevoPlazo,
+                                garantiaCtrl.text.trim(),
+                                notasCtrl.text.trim(),
+                              );
+                            }
                           },
-                          child: const Text(AppStrings.guardar),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Text(cancelarTodo
+                                ? 'Confirmar Cancelación'
+                                : AppStrings.guardar),
+                          ),
                         ),
                       ),
                     ],
@@ -209,6 +313,68 @@ class _DetallePrestamoScreenState
         },
       ),
     );
+  }
+
+  Future<void> _cancelarDeudaCompleta(
+    BuildContext ctx,
+    Prestamo prestamo,
+    List<CuotaPago> cuotasActuales,
+    double tasa,
+  ) async {
+    final cuotasPagadas = cuotasActuales.where((c) => c.pagado).toList();
+    final capitalPagado =
+        cuotasPagadas.fold<double>(0, (sum, c) => sum + c.capital);
+    final saldoCapital = prestamo.montoOriginal - capitalPagado;
+    final interesFinal = saldoCapital * (tasa / 100);
+    final montoCancelacion = saldoCapital + interesFinal;
+
+    // Generar una sola cuota final
+    final numCuota = cuotasPagadas.length + 1;
+    final fechaPago = DateTime.now();
+    final cuotaFinal = CuotaPago(
+      id: '${prestamo.id}_cuota_$numCuota',
+      prestamoId: prestamo.id,
+      cuotaNumero: numCuota,
+      fechaPago: fechaPago,
+      capital: double.parse(saldoCapital.toStringAsFixed(2)),
+      interes: double.parse(interesFinal.toStringAsFixed(2)),
+      totalCuota: double.parse(montoCancelacion.toStringAsFixed(2)),
+      saldo: 0,
+      pagado: true,
+      fechaPagado: fechaPago,
+    );
+
+    // Actualizar préstamo como pagado
+    final updated = prestamo.copyWith(
+      tasaInteres: tasa,
+      plazoMeses: numCuota,
+      saldoPendiente: 0,
+      estado: 'pagado',
+      fechaVencimiento: fechaPago,
+    );
+
+    await ref.read(prestamosProvider.notifier).regenerarCuotas(
+          updated, [cuotaFinal]);
+
+    // Cambiar estado del cliente a finalizado
+    await ref
+        .read(clientesProvider.notifier)
+        .actualizarEstado(prestamo.clienteId, 'finalizado');
+
+    // Generar finiquito PDF
+    final cliente = await ref
+        .read(clientePorIdProvider(prestamo.clienteId).future);
+    if (cliente != null) {
+      await CarpetaService.instance.generarFiniquito(cliente, updated);
+    }
+
+    if (ctx.mounted) Navigator.pop(ctx);
+    _refrescarDatos();
+    ref.invalidate(capitalDisponibleProvider);
+    if (mounted) {
+      AppSnackBar.exito(context,
+          'Deuda cancelada. Monto: ${AppFormatters.moneda(montoCancelacion)}. Finiquito generado.');
+    }
   }
 
   Future<void> _guardarEdicion(
@@ -298,7 +464,10 @@ class _DetallePrestamoScreenState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.bodySmall),
+          Flexible(
+            child: Text(label, style: AppTextStyles.bodySmall),
+          ),
+          const SizedBox(width: 8),
           Text(value, style: AppTextStyles.titleSmall),
         ],
       ),
@@ -337,7 +506,9 @@ class _DetallePrestamoScreenState
                 ),
             ],
           ),
-          body: SingleChildScrollView(
+          body: SafeArea(
+            top: false,
+            child: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -421,7 +592,13 @@ class _DetallePrestamoScreenState
                     style: AppTextStyles.titleMedium),
                 const SizedBox(height: 8),
                 cuotasAsync.when(
-                  data: (cuotas) => TablaAmortizacion(cuotas: cuotas),
+                  data: (cuotas) => TablaAmortizacion(
+                    cuotas: cuotas,
+                    montoOriginal: prestamo.montoOriginal,
+                    tasaInteres: prestamo.tasaInteres,
+                    cuotaMensual: prestamo.cuotaMensual,
+                    fechaInicio: prestamo.fechaInicio,
+                  ),
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
                   error: (e, _) => Text('Error: $e'),
@@ -465,6 +642,7 @@ class _DetallePrestamoScreenState
               ],
             ),
           ),
+          ),
         );
       },
       loading: () => Scaffold(
@@ -484,7 +662,10 @@ class _DetallePrestamoScreenState
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: AppTextStyles.bodySmall),
+          Flexible(
+            child: Text(label, style: AppTextStyles.bodySmall),
+          ),
+          const SizedBox(width: 8),
           Text(value, style: AppTextStyles.titleSmall),
         ],
       ),

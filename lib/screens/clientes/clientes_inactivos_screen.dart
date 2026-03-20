@@ -6,7 +6,10 @@ import '../../constants/app_strings.dart';
 import '../../constants/app_text_styles.dart';
 import '../../helpers/app_formatters.dart';
 import '../../providers/cliente_provider.dart';
+import '../../router/app_routes.dart';
+import '../../widgets/app_snack_bar.dart';
 import '../../widgets/cliente_avatar.dart';
+import '../../widgets/confirm_dialog.dart';
 import '../../widgets/empty_state.dart';
 import '../../widgets/app_error_widget.dart';
 
@@ -21,7 +24,9 @@ class ClientesInactivosScreen extends ConsumerWidget {
       appBar: AppBar(
         title: const Text(AppStrings.historialClientes),
       ),
-      body: clientesAsync.when(
+      body: SafeArea(
+        top: false,
+        child: clientesAsync.when(
         data: (clientes) {
           if (clientes.isEmpty) {
             return const EmptyState(
@@ -36,51 +41,109 @@ class ClientesInactivosScreen extends ConsumerWidget {
               final c = clientes[i];
               final esFinalizado = c.estado == 'finalizado';
 
-              return ListTile(
-                leading: ClienteAvatar(
-                  nombre: c.nombre,
-                  apellido: c.apellido,
-                  fotoPath: c.fotoPath,
-                ),
-                title: Text(c.nombreCompleto,
-                    style: AppTextStyles.titleSmall),
-                subtitle: Text(
-                  AppFormatters.telefono(c.telefono),
-                  style: AppTextStyles.bodySmall,
-                ),
-                trailing: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 130),
+              return Dismissible(
+                key: Key(c.id),
+                direction: DismissDirection.endToStart,
+                background: Container(
+                  color: esFinalizado ? AppColors.primary : AppColors.success,
+                  alignment: Alignment.centerRight,
+                  padding: const EdgeInsets.only(right: 20),
                   child: Row(
-                    mainAxisSize: MainAxisSize.min,
+                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      Flexible(
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 8, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: esFinalizado
-                                ? AppColors.successLight
-                                : AppColors.background,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            esFinalizado ? 'Finalizado' : 'Inactivo',
-                            style: AppTextStyles.labelSmall.copyWith(
-                              color: esFinalizado
-                                  ? AppColors.success
-                                  : AppColors.textSecondary,
-                              fontWeight: FontWeight.bold,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
+                      Icon(
+                        esFinalizado ? Icons.add_circle : Icons.person_add,
+                        color: Colors.white,
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        esFinalizado ? 'Nuevo Préstamo' : 'Activar',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      const Icon(Icons.chevron_right, size: 20),
+                      const SizedBox(width: 8),
                     ],
                   ),
                 ),
-                onTap: () => context.push('/clientes/${c.id}'),
+                confirmDismiss: (_) async {
+                  if (esFinalizado) {
+                    // Nuevo préstamo para cliente finalizado
+                    await context.push(
+                      AppRoutes.nuevoPrestamo,
+                      extra: {'clienteId': c.id},
+                    );
+                    ref.invalidate(clientesInactivosProvider);
+                    ref.invalidate(clientesProvider);
+                  } else {
+                    // Activar cliente inactivo
+                    final confirmar = await ConfirmDialog.show(
+                      context,
+                      titulo: 'Activar cliente',
+                      mensaje:
+                          '¿Deseas activar a ${c.nombreCompleto}?',
+                      textoConfirmar: 'Activar',
+                    );
+                    if (confirmar == true) {
+                      await ref
+                          .read(clientesProvider.notifier)
+                          .actualizarEstado(c.id, 'activo');
+                      ref.invalidate(clientesInactivosProvider);
+                      if (context.mounted) {
+                        AppSnackBar.exito(
+                            context, '${c.nombreCompleto} activado');
+                      }
+                    }
+                  }
+                  return false;
+                },
+                child: ListTile(
+                  leading: ClienteAvatar(
+                    nombre: c.nombre,
+                    apellido: c.apellido,
+                    fotoPath: c.fotoPath,
+                  ),
+                  title: Text(c.nombreCompleto,
+                      style: AppTextStyles.titleSmall),
+                  subtitle: Text(
+                    AppFormatters.telefono(c.telefono),
+                    style: AppTextStyles.bodySmall,
+                  ),
+                  trailing: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 130),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: esFinalizado
+                                  ? AppColors.successLight
+                                  : AppColors.background,
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              esFinalizado ? 'Finalizado' : 'Inactivo',
+                              style: AppTextStyles.labelSmall.copyWith(
+                                color: esFinalizado
+                                    ? AppColors.success
+                                    : AppColors.textSecondary,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        const Icon(Icons.chevron_right, size: 20),
+                      ],
+                    ),
+                  ),
+                  onTap: () => context.push('/clientes/${c.id}'),
+                ),
               );
             },
           );
@@ -90,6 +153,7 @@ class ClientesInactivosScreen extends ConsumerWidget {
           mensaje: e.toString(),
           onRetry: () => ref.invalidate(clientesProvider),
         ),
+      ),
       ),
     );
   }

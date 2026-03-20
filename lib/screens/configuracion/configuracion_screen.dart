@@ -39,7 +39,9 @@ class ConfiguracionScreen extends ConsumerWidget {
         ),
         title: const Text(AppStrings.configuracion),
       ),
-      body: ListView(
+      body: SafeArea(
+        top: false,
+        child: ListView(
         padding: const EdgeInsets.all(16),
         children: [
           // Mi perfil
@@ -227,6 +229,7 @@ class ConfiguracionScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 32),
         ],
+      ),
       ),
     ),
     );

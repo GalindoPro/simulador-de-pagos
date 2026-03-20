@@ -196,7 +196,9 @@ class _FormClienteScreenState extends ConsumerState<FormClienteScreen> {
         title: Text(
             _isEditing ? AppStrings.editarCliente : AppStrings.nuevoCliente),
       ),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -313,18 +315,6 @@ class _FormClienteScreenState extends ConsumerState<FormClienteScreen> {
               ),
               const SizedBox(height: 16),
 
-              // Email
-              TextFormField(
-                controller: _emailCtrl,
-                decoration: const InputDecoration(
-                  labelText: AppStrings.email,
-                  prefixIcon: Icon(Icons.email),
-                ),
-                keyboardType: TextInputType.emailAddress,
-                validator: AppValidators.email,
-              ),
-              const SizedBox(height: 16),
-
               // Dirección
               TextFormField(
                 controller: _direccionCtrl,
@@ -345,6 +335,7 @@ class _FormClienteScreenState extends ConsumerState<FormClienteScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

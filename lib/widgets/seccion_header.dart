@@ -19,7 +19,7 @@ class SeccionHeader extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(titulo, style: AppTextStyles.titleMedium),
+          Flexible(child: Text(titulo, style: AppTextStyles.titleMedium)),
           if (onVerTodos != null)
             TextButton(
               onPressed: onVerTodos,

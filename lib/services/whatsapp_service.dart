@@ -15,9 +15,7 @@ class WhatsAppService {
     );
 
     try {
-      if (await canLaunchUrl(url)) {
-        await launchUrl(url, mode: LaunchMode.externalApplication);
-      }
+      await launchUrl(url, mode: LaunchMode.externalApplication);
     } catch (e) {
       debugPrint('Error al abrir WhatsApp: $e');
     }
@@ -43,15 +41,10 @@ class WhatsAppService {
     required String nombre,
     required String monto,
     required String concepto,
-    String? saldoPendiente,
   }) {
-    var msg = '¡Hola $nombre! Tu pago de $monto por concepto "$concepto" '
-        'ha sido registrado exitosamente.';
-    if (saldoPendiente != null) {
-      msg += '\nSaldo pendiente: $saldoPendiente';
-    }
-    msg += '\n¡Gracias por tu puntualidad!';
-    return msg;
+    return '¡Hola $nombre! Tu pago de $monto por concepto "$concepto" '
+        'ha sido registrado exitosamente.'
+        '\n¡Gracias por tu puntualidad!';
   }
 
   static String mensajeFiniquito(String nombre) {

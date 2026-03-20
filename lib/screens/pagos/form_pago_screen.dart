@@ -55,21 +55,19 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
   }
 
   Future<void> _cargarDatosPrestamo() async {
-    final cuota = await ref
-        .read(prestamoRepositoryProvider)
-        .obtenerCuotaActual(_prestamoId!);
     final prestamo = await ref
         .read(prestamoRepositoryProvider)
         .obtenerPorId(_prestamoId!);
+    final cuota = await ref
+        .read(prestamoRepositoryProvider)
+        .obtenerCuotaActual(_prestamoId!);
 
-    if (cuota != null && mounted) {
-      setState(() {
-        _montoCtrl.text = cuota.totalCuota.toStringAsFixed(2);
-        _conceptoCtrl.text = 'Cuota No. ${cuota.cuotaNumero}';
-      });
-    } else if (prestamo != null && mounted) {
+    if (prestamo != null && mounted) {
       setState(() {
         _montoCtrl.text = prestamo.cuotaMensual.toStringAsFixed(2);
+        if (cuota != null) {
+          _conceptoCtrl.text = 'Cuota No. ${cuota.cuotaNumero}';
+        }
       });
     }
   }
@@ -249,9 +247,6 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
               nombre: cliente.nombre,
               monto: AppFormatters.moneda(monto),
               concepto: pago.concepto,
-              saldoPendiente: prestamo != null
-                  ? AppFormatters.moneda(prestamo.saldoPendiente)
-                  : null,
             ),
             context,
           );
@@ -300,7 +295,9 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.nuevoPago)),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -382,11 +379,15 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
               // Monto
               TextFormField(
                 controller: _montoCtrl,
-                decoration: const InputDecoration(
+                decoration: InputDecoration(
                   labelText: '${AppStrings.monto} *',
-                  prefixIcon: Icon(Icons.attach_money),
+                  prefixIcon: const Icon(Icons.attach_money),
                   prefixText: 'Q ',
+                  suffixIcon: _prestamoId != null
+                      ? const Icon(Icons.lock, size: 18, color: AppColors.disabled)
+                      : null,
                 ),
+                readOnly: _prestamoId != null,
                 keyboardType:
                     const TextInputType.numberWithOptions(decimal: true),
                 inputFormatters: [
@@ -424,7 +425,7 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
                   ),
                   ButtonSegment(
                     value: 'transferencia',
-                    label: Text('Transferencia'),
+                    label: Text('Transferencia/Depósito'),
                     icon: Icon(Icons.account_balance),
                   ),
                 ],
@@ -507,6 +508,7 @@ class _FormPagoScreenState extends ConsumerState<FormPagoScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }

@@ -168,7 +168,9 @@ class CarpetaService {
               _pdfRow('Cliente', cliente.nombreCompleto),
               _pdfRow('Monto', AppFormatters.moneda(pago.monto)),
               _pdfRow('Fecha', AppFormatters.fechaLarga(pago.fecha)),
-              _pdfRow('Método', pago.metodoPago),
+              _pdfRow('Método', pago.metodoPago == 'transferencia'
+                  ? 'Transferencia/Depósito'
+                  : 'Efectivo'),
               _pdfRow('Concepto', pago.concepto),
               if (cuota != null)
                 _pdfRow('Cuota No.', '${cuota.cuotaNumero}'),
@@ -177,6 +179,19 @@ class CarpetaService {
                 _pdfRow('Cuotas pendientes', '$cuotasPendientes de ${prestamo.plazoMeses}'),
               ],
               pw.SizedBox(height: 30),
+              pw.Container(
+                padding: const pw.EdgeInsets.all(12),
+                decoration: pw.BoxDecoration(
+                  color: PdfColors.green50,
+                  borderRadius: pw.BorderRadius.circular(6),
+                ),
+                child: pw.Text(
+                  'Gracias por su pago, ${cliente.nombre}. Su puntualidad y compromiso son muy valorados.',
+                  style: const pw.TextStyle(fontSize: 11),
+                  textAlign: pw.TextAlign.center,
+                ),
+              ),
+              pw.SizedBox(height: 20),
               pw.Divider(),
               pw.SizedBox(height: 10),
               pw.Text('Capital Pro — Gestión Financiera',

@@ -89,7 +89,9 @@ class _ClientesScreenState extends ConsumerState<ClientesScreen> {
           ),
         ),
       ),
-      body: clientesAsync.when(
+      body: SafeArea(
+        top: false,
+        child: clientesAsync.when(
         data: (clientes) {
           if (clientes.isEmpty) {
             return EmptyState(
@@ -124,19 +126,19 @@ class _ClientesScreenState extends ConsumerState<ClientesScreen> {
                       );
                       return false;
                     } else {
-                      return ConfirmDialog.show(
+                      final confirmar = await ConfirmDialog.show(
                         context,
                         titulo: 'Marcar inactivo',
                         mensaje:
                             '¿Deseas marcar a ${c.nombreCompleto} como inactivo?',
                       );
-                    }
-                  },
-                  onDismissed: (direction) {
-                    if (direction == DismissDirection.endToStart) {
-                      ref
-                          .read(clientesProvider.notifier)
-                          .actualizarEstado(c.id, 'inactivo');
+                      if (confirmar == true) {
+                        await ref
+                            .read(clientesProvider.notifier)
+                            .actualizarEstado(c.id, 'inactivo');
+                        _refrescar();
+                      }
+                      return false;
                     }
                   },
                   background: Container(
@@ -181,6 +183,7 @@ class _ClientesScreenState extends ConsumerState<ClientesScreen> {
           mensaje: e.toString(),
           onRetry: () => ref.invalidate(clientesProvider),
         ),
+      ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

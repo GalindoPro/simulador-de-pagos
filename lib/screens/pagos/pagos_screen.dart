@@ -25,16 +25,33 @@ class PagosScreen extends ConsumerStatefulWidget {
   ConsumerState<PagosScreen> createState() => _PagosScreenState();
 }
 
-class _PagosScreenState extends ConsumerState<PagosScreen> {
+class _PagosScreenState extends ConsumerState<PagosScreen>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     Future.microtask(() => _refrescarTodo());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _refrescarTodo();
+    }
   }
 
   void _refrescarTodo() {
     ref.invalidate(pagosProvider);
     ref.invalidate(resumenPagosProvider);
+    ref.invalidate(prestamosProvider);
+    ref.invalidate(clientesProvider);
   }
 
   @override
@@ -56,7 +73,9 @@ class _PagosScreenState extends ConsumerState<PagosScreen> {
         ),
         title: const Text(AppStrings.pagos),
       ),
-      body: Column(
+      body: SafeArea(
+        top: false,
+        child: Column(
         children: [
           // Stats header
           Padding(
@@ -151,8 +170,7 @@ class _PagosScreenState extends ConsumerState<PagosScreen> {
 
                 return RefreshIndicator(
                   onRefresh: () async {
-                    ref.invalidate(pagosProvider);
-                    ref.invalidate(resumenPagosProvider);
+                    _refrescarTodo();
                   },
                   child: ListView.builder(
                     itemCount: pagos.length,
@@ -172,13 +190,17 @@ class _PagosScreenState extends ConsumerState<PagosScreen> {
                           child: const Icon(Icons.delete,
                               color: Colors.white),
                         ),
-                        confirmDismiss: (_) => ConfirmDialog.show(
-                          context,
-                          titulo: AppStrings.eliminar,
-                          mensaje: AppStrings.confirmarEliminar,
-                        ),
-                        onDismissed: (_) {
-                          ref.read(pagosProvider.notifier).eliminar(p.id);
+                        confirmDismiss: (_) async {
+                          final confirmar = await ConfirmDialog.show(
+                            context,
+                            titulo: AppStrings.eliminar,
+                            mensaje: AppStrings.confirmarEliminar,
+                          );
+                          if (confirmar == true) {
+                            await ref.read(pagosProvider.notifier).eliminar(p.id);
+                            _refrescarTodo();
+                          }
+                          return false;
                         },
                         child: PagoListTile(
                           pago: p,
@@ -205,6 +227,7 @@ class _PagosScreenState extends ConsumerState<PagosScreen> {
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

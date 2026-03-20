@@ -190,7 +190,13 @@ class _SimuladorScreenState extends State<SimuladorScreen> {
                 Text(AppStrings.tablaAmortizacion,
                     style: AppTextStyles.titleMedium),
                 const SizedBox(height: 8),
-                TablaAmortizacion(cuotas: _cuotas!),
+                TablaAmortizacion(
+                  cuotas: _cuotas!,
+                  montoOriginal: _monto,
+                  tasaInteres: _tasa,
+                  cuotaMensual: _cuotaMensual,
+                  fechaInicio: _fechaPrimerPago,
+                ),
                 const SizedBox(height: 16),
                 ElevatedButton.icon(
                   onPressed: () {
@@ -215,6 +221,7 @@ class _SimuladorScreenState extends State<SimuladorScreen> {
       ),
     );
   }
+
 
   Widget _previewRow(String label, String valor) {
     return Padding(

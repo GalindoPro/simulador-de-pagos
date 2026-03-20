@@ -6,19 +6,22 @@ import '../models/cuota_pago.dart';
 
 class TablaAmortizacion extends StatelessWidget {
   final List<CuotaPago> cuotas;
+  final double montoOriginal;
+  final double tasaInteres;
+  final double cuotaMensual;
+  final DateTime fechaInicio;
 
   const TablaAmortizacion({
     super.key,
     required this.cuotas,
+    required this.montoOriginal,
+    required this.tasaInteres,
+    required this.cuotaMensual,
+    required this.fechaInicio,
   });
 
   @override
   Widget build(BuildContext context) {
-    // Encontrar la próxima cuota pendiente
-    final proximaCuota = cuotas
-        .where((c) => !c.pagado)
-        .fold<CuotaPago?>(null, (prev, c) => prev ?? c);
-
     final totalPagado = cuotas.where((c) => c.pagado).length;
     final total = cuotas.length;
 
@@ -55,20 +58,18 @@ class TablaAmortizacion extends StatelessWidget {
                       : AppColors.success,
                 ),
               ),
-              if (proximaCuota != null) ...[
-                Container(
-                  width: 1,
-                  height: 30,
-                  color: AppColors.divider,
+              Container(
+                width: 1,
+                height: 30,
+                color: AppColors.divider,
+              ),
+              Expanded(
+                child: _resumenItem(
+                  'Cuota',
+                  AppFormatters.moneda(cuotaMensual),
+                  AppColors.primary,
                 ),
-                Expanded(
-                  child: _resumenItem(
-                    'Próxima',
-                    AppFormatters.fechaCorta(proximaCuota.fechaPago),
-                    AppColors.primary,
-                  ),
-                ),
-              ],
+              ),
             ],
           ),
         ),
@@ -78,135 +79,141 @@ class TablaAmortizacion extends StatelessWidget {
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: DataTable(
-            columnSpacing: 14,
+            columnSpacing: 10,
             headingRowHeight: 44,
-            dataRowMinHeight: 44,
-            dataRowMaxHeight: 60,
+            dataRowMinHeight: 36,
+            dataRowMaxHeight: 40,
             headingRowColor: WidgetStateProperty.all(
               AppColors.primary.withValues(alpha: 0.1),
             ),
-            columns: const [
-              DataColumn(label: Text('No.')),
-              DataColumn(label: Text('Fecha')),
-              DataColumn(label: Text('Capital'), numeric: true),
-              DataColumn(label: Text('Interés'), numeric: true),
-              DataColumn(label: Text('Cuota'), numeric: true),
-              DataColumn(label: Text('Saldo'), numeric: true),
-              DataColumn(label: Text('Estado')),
+            columns: [
+              DataColumn(label: _headerText('#')),
+              DataColumn(label: _headerText('Días'), numeric: true),
+              DataColumn(label: _headerText('Fecha')),
+              DataColumn(label: _headerText('Fecha\nde pago')),
+              DataColumn(label: _headerText('Saldo del\npréstamo'), numeric: true),
+              DataColumn(label: _headerText('Adeudado'), numeric: true),
+              DataColumn(label: _headerText('Pagado'), numeric: true),
+              DataColumn(label: _headerText('Por\nadelantado'), numeric: true),
+              DataColumn(label: _headerText('Tarde'), numeric: true),
+              DataColumn(label: _headerText('Pendiente'), numeric: true),
             ],
-            rows: cuotas.map((c) {
-              final esProxima = proximaCuota?.id == c.id;
-
-              return DataRow(
-                color: WidgetStateProperty.resolveWith<Color?>((states) {
-                  if (c.pagado) {
-                    return AppColors.successLight.withValues(alpha: 0.3);
-                  }
-                  if (esProxima) {
-                    return AppColors.warningLight.withValues(alpha: 0.5);
-                  }
-                  return null;
-                }),
-                cells: [
-                  DataCell(Text(
-                    '${c.cuotaNumero}',
-                    style: esProxima
-                        ? AppTextStyles.labelLarge
-                            .copyWith(color: AppColors.warning)
-                        : null,
-                  )),
-                  DataCell(Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(AppFormatters.fechaCorta(c.fechaPago)),
-                      if (c.pagado && c.fechaPagado != null)
-                        Text(
-                          'Pagado: ${AppFormatters.fechaCorta(c.fechaPagado!)}',
-                          style: AppTextStyles.caption
-                              .copyWith(color: AppColors.success),
-                        ),
-                    ],
-                  )),
-                  DataCell(Text(AppFormatters.moneda(c.capital))),
-                  DataCell(Text(AppFormatters.moneda(c.interes))),
-                  DataCell(Text(
-                    AppFormatters.moneda(c.totalCuota),
-                    style: AppTextStyles.labelLarge,
-                  )),
-                  DataCell(Text(AppFormatters.moneda(c.saldo))),
-                  DataCell(_estadoChip(c, esProxima)),
-                ],
-              );
-            }).toList(),
+            rows: _buildRows(),
           ),
         ),
       ],
     );
   }
 
+  List<DataRow> _buildRows() {
+    final rows = <DataRow>[];
+
+    // Row 0 - Desembolso (interés del primer mes)
+    final interesInicial = montoOriginal * (tasaInteres / 100);
+    rows.add(DataRow(
+      color: WidgetStateProperty.all(
+          AppColors.primary.withValues(alpha: 0.05)),
+      cells: [
+        const DataCell(Text('')),
+        const DataCell(Text('')),
+        DataCell(_cellText(AppFormatters.fechaCorta(fechaInicio))),
+        const DataCell(Text('')),
+        DataCell(_cellText(AppFormatters.moneda(montoOriginal))),
+        DataCell(_cellText(AppFormatters.moneda(interesInicial))),
+        DataCell(_cellText(AppFormatters.moneda(interesInicial))),
+        const DataCell(Text('')),
+        const DataCell(Text('')),
+        const DataCell(Text('')),
+      ],
+    ));
+
+    // Cuotas
+    DateTime fechaAnterior = fechaInicio;
+    for (int i = 0; i < cuotas.length; i++) {
+      final c = cuotas[i];
+      final dias = c.fechaPago.difference(fechaAnterior).inDays;
+      fechaAnterior = c.fechaPago;
+
+      // Saldo del préstamo ANTES de pagar esta cuota
+      final saldoPrestamo = c.saldo + c.capital;
+
+      final adeudado = cuotaMensual;
+
+      // Clasificar pago según fecha real vs fecha programada
+      double pagado = 0.0;
+      double porAdelantado = 0.0;
+      double tarde = 0.0;
+      double pendiente = 0.0;
+
+      if (c.pagado && c.fechaPagado != null) {
+        pagado = adeudado;
+        if (!c.fechaPagado!.isAfter(c.fechaPago)) {
+          porAdelantado = adeudado;
+        } else {
+          tarde = adeudado;
+        }
+      } else {
+        pendiente = adeudado;
+      }
+
+      rows.add(DataRow(
+        color: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (c.pagado) {
+            return AppColors.successLight.withValues(alpha: 0.3);
+          }
+          return null;
+        }),
+        cells: [
+          DataCell(_cellText('${c.cuotaNumero}')),
+          DataCell(_cellText('$dias')),
+          DataCell(_cellText(AppFormatters.fechaCorta(c.fechaPago))),
+          DataCell(_cellText(c.fechaPagado != null
+              ? AppFormatters.fechaCorta(c.fechaPagado!)
+              : '')),
+          DataCell(_cellText(AppFormatters.moneda(saldoPrestamo))),
+          DataCell(_cellText(AppFormatters.moneda(adeudado))),
+          DataCell(_cellText(AppFormatters.moneda(pagado))),
+          DataCell(_cellText(AppFormatters.moneda(porAdelantado))),
+          DataCell(_cellText(AppFormatters.moneda(tarde))),
+          DataCell(_cellText(AppFormatters.moneda(pendiente))),
+        ],
+      ));
+    }
+
+    return rows;
+  }
+
+  Widget _headerText(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 11,
+        fontWeight: FontWeight.bold,
+        color: AppColors.textPrimary,
+      ),
+    );
+  }
+
+  Widget _cellText(String text) {
+    return Text(
+      text,
+      style: const TextStyle(fontSize: 11),
+    );
+  }
+
   Widget _resumenItem(String label, String value, Color color) {
     return Column(
       children: [
-        Text(
-          value,
-          style: AppTextStyles.titleSmall.copyWith(color: color),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            value,
+            style: AppTextStyles.titleSmall.copyWith(color: color),
+          ),
         ),
         const SizedBox(height: 2),
         Text(label, style: AppTextStyles.caption),
       ],
-    );
-  }
-
-  Widget _estadoChip(CuotaPago cuota, bool esProxima) {
-    if (cuota.pagado) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.success.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.check_circle, color: AppColors.success, size: 16),
-            SizedBox(width: 4),
-            Text('Pagado',
-                style: TextStyle(
-                    color: AppColors.success,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
-    }
-
-    if (esProxima) {
-      return Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-        decoration: BoxDecoration(
-          color: AppColors.warning.withValues(alpha: 0.15),
-          borderRadius: BorderRadius.circular(12),
-        ),
-        child: const Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.schedule, color: AppColors.warning, size: 16),
-            SizedBox(width: 4),
-            Text('Próxima',
-                style: TextStyle(
-                    color: AppColors.warning,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600)),
-          ],
-        ),
-      );
-    }
-
-    return const Icon(
-      Icons.radio_button_unchecked,
-      color: AppColors.disabled,
-      size: 20,
     );
   }
 }

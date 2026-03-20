@@ -11,7 +11,7 @@ import '../../providers/prestamo_provider.dart';
 import '../../services/carpeta_service.dart';
 import '../../services/whatsapp_service.dart';
 import '../../widgets/app_error_widget.dart';
-import '../../widgets/whatsapp_button.dart';
+import '../../widgets/app_snack_bar.dart';
 
 class DetallePagoScreen extends ConsumerStatefulWidget {
   final String pagoId;
@@ -24,6 +24,7 @@ class DetallePagoScreen extends ConsumerStatefulWidget {
 
 class _DetallePagoScreenState extends ConsumerState<DetallePagoScreen> {
   bool _generandoPdf = false;
+  bool _enviandoWhatsApp = false;
 
   Future<void> _compartirRecibo(dynamic pago, dynamic cliente) async {
     setState(() => _generandoPdf = true);
@@ -64,6 +65,62 @@ class _DetallePagoScreenState extends ConsumerState<DetallePagoScreen> {
     } finally {
       if (mounted) {
         setState(() => _generandoPdf = false);
+      }
+    }
+  }
+
+  Future<void> _enviarWhatsApp(dynamic pago, dynamic cliente) async {
+    if (cliente == null) return;
+    setState(() => _enviandoWhatsApp = true);
+
+    try {
+      // Generar PDF si no existe
+      String? path = pago.pdfPath;
+      if (path == null) {
+        final prestamo = pago.prestamoId != null
+            ? await ref
+                .read(prestamoRepositoryProvider)
+                .obtenerPorId(pago.prestamoId!)
+            : null;
+        final cuota = pago.prestamoId != null
+            ? await ref
+                .read(prestamoRepositoryProvider)
+                .obtenerCuotaActual(pago.prestamoId!)
+            : null;
+        final cuotasPendientes = pago.prestamoId != null
+            ? await ref
+                .read(prestamoRepositoryProvider)
+                .contarCuotasPendientes(pago.prestamoId!)
+            : 0;
+
+        path = await CarpetaService.instance
+            .generarReciboPago(pago, cliente, cuota, prestamo,
+                cuotasPendientes: cuotasPendientes);
+
+        await ref
+            .read(pagosProvider.notifier)
+            .actualizar(pago.copyWith(pdfPath: path));
+      }
+
+      // Abrir WhatsApp directo con el número del cliente
+      if (mounted) {
+        await WhatsAppService.enviarMensaje(
+          cliente.telefono,
+          WhatsAppService.mensajeConfirmacionPago(
+            nombre: cliente.nombre,
+            monto: AppFormatters.moneda(pago.monto),
+            concepto: pago.concepto,
+          ),
+          context,
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        AppSnackBar.error(context, 'Error al enviar: $e');
+      }
+    } finally {
+      if (mounted) {
+        setState(() => _enviandoWhatsApp = false);
       }
     }
   }
@@ -197,16 +254,29 @@ class _DetallePagoScreenState extends ConsumerState<DetallePagoScreen> {
                                     if (cliente == null) {
                                       return const SizedBox.shrink();
                                     }
-                                    return WhatsAppButton(
-                                      telefono: cliente.telefono,
-                                      mensaje: WhatsAppService
-                                          .mensajeConfirmacionPago(
-                                        nombre: cliente.nombre,
-                                        monto: AppFormatters.moneda(
-                                            pago.monto),
-                                        concepto: pago.concepto,
+                                    return ElevatedButton.icon(
+                                      onPressed: _enviandoWhatsApp
+                                          ? null
+                                          : () => _enviarWhatsApp(pago, cliente),
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: AppColors.whatsapp,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                            vertical: 12),
                                       ),
-                                      mostrarTexto: true,
+                                      icon: _enviandoWhatsApp
+                                          ? const SizedBox(
+                                              width: 18,
+                                              height: 18,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                                color: Colors.white,
+                                              ),
+                                            )
+                                          : const Icon(Icons.chat, size: 18),
+                                      label: Text(_enviandoWhatsApp
+                                          ? 'Enviando...'
+                                          : 'WhatsApp'),
                                     );
                                   },
                                   loading: () => const SizedBox.shrink(),

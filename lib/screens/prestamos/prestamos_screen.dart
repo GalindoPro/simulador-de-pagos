@@ -50,7 +50,9 @@ class _PrestamosScreenState extends ConsumerState<PrestamosScreen> {
         ),
         title: const Text(AppStrings.prestamos),
       ),
-      body: Column(
+      body: SafeArea(
+        top: false,
+        child: Column(
         children: [
           // Header stats
           Padding(
@@ -156,6 +158,7 @@ class _PrestamosScreenState extends ConsumerState<PrestamosScreen> {
             ),
           ),
         ],
+      ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {

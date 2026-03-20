@@ -50,6 +50,7 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
       _tasaCtrl.text = (d['tasa'] as double?)?.toString() ?? '7.0';
       _plazo = (d['plazo'] as int?)?.toDouble() ?? 12;
       _fechaInicio = d['fechaInicio'] as DateTime? ?? DateTime.now();
+      _clienteId = d['clienteId'] as String?;
     }
   }
 
@@ -278,7 +279,9 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
 
     return Scaffold(
       appBar: AppBar(title: const Text(AppStrings.nuevoPrestamo)),
-      body: SingleChildScrollView(
+      body: SafeArea(
+        top: false,
+        child: SingleChildScrollView(
         padding: const EdgeInsets.all(16),
         child: Form(
           key: _formKey,
@@ -483,6 +486,7 @@ class _FormPrestamoScreenState extends ConsumerState<FormPrestamoScreen> {
             ],
           ),
         ),
+      ),
       ),
     );
   }
