@@ -1,263 +1,207 @@
-# Capital Pro — Prompts listos por módulo
+# Capital Pro — prompts por módulo
 
-> Usa siempre junto con CAPITAL_PRO_CONTEXT.md
+> Base de trabajo para pedir cambios específicos con IA. Usar junto con `CAPITAL_PRO_CONTEXT.md`.
+
+## Instrucciones generales para todos los prompts
+
+- Mantener el proyecto en Español.
+- Usar `AppColors`, `AppStrings`, `AppTextStyles` y validadores existentes.
+- Crear `try/catch` en procesos async.
+- Verificar `if (mounted)` antes de `context` después de `await`.
+- No hardcodear textos en interfaces.
+- Usar `go_router` y rutas declaradas.
+- Mantener consistencia con `lib/providers`, `lib/repositories` y `lib/services`.
 
 ---
 
-## PROMPT 00 — Registro mejorado (3 pasos) + Recuperar contraseña
+## PROMPT 01 — Registro y login
 
-```
-Genera las pantallas de auth mejoradas para Capital Pro:
+```text
+Genera o actualiza el flujo de autenticación de Capital Pro.
 
-1. lib/screens/auth/registro_screen.dart — Registro en 3 pasos (PageView o Stepper):
-   PASO 1: nombre (Title Case onChanged) + teléfono + contraseña + confirmar
-   PASO 2: Seleccionar pregunta 1 (DropdownButtonFormField de kPreguntasSeguridad)
-           + respuesta 1 + Seleccionar pregunta 2 + respuesta 2
-   PASO 3: "¿Cuánto capital tienes disponible para prestar?"
-           Campo Q (numérico, monto > 0)
-           Texto aclaratorio: "Puedes cambiarlo después en Configuración"
-   
-   Al finalizar: guarda usuario + preguntas (hash SHA-256 de respuestas) + capital
-   → SnackBar éxito → context.go(AppRoutes.login)
-   NO auto-login
+Objetivo:
+- Auth con login y registro
+- Registro de 3 pasos
+- Recuperación de contraseña
+- Respuestas de seguridad en SHA-256
+- Validación de teléfono y contraseña
 
-2. lib/screens/auth/recuperar_password_screen.dart:
-   PASO 1: Campo teléfono → busca usuario en DB
-   PASO 2: Muestra pregunta 1 del usuario → campo respuesta
-           Valida hash → si incorrecto, error
-   PASO 3: Muestra pregunta 2 → campo respuesta
-           Valida hash → si incorrecto, error
-   PASO 4: Nueva contraseña + confirmar → actualiza en DB
-   → SnackBar "Contraseña actualizada" → context.go(AppRoutes.login)
+Archivos esperados:
+- lib/screens/auth/login_screen.dart
+- lib/screens/auth/registro_screen.dart
+- lib/screens/auth/recuperar_password_screen.dart
 
-   En login_screen.dart agregar TextButton "¿Olvidaste tu contraseña?"
-   que navega a AppRoutes.recuperarPassword
-
-Reglas:
-- Respuestas guardadas en minúsculas y con SHA-256
-- Todos los if con llaves {}
-- Usar AppValidators, AppColors, AppStrings
-- LoadingButton para todos los botones de acción
-- AppSnackBar para todos los mensajes
+Requisitos:
+- Mantener separación de responsabilidades con providers y repositories
+- Manejar loading y mensajes con el patrón del proyecto
+- Validar contraseña, nombre, teléfono y capital inicial
+- No auto-login después del registro
 ```
 
-## PROMPT 0B — Dashboard mejorado con capital y acciones rápidas
+---
 
-```
-Actualiza lib/screens/dashboard/dashboard_screen.dart con:
+## PROMPT 02 — Dashboard financiero
 
-1. HEADER mejorado:
-   - Saludo + nombre usuario
-   - "Capital disponible: Q XX,XXX.XX" (de sesionActualProvider.capitalInicial)
-   - Fecha actual en formato largo
-   - Ícono de campana (notificaciones)
+```text
+Actualiza la pantalla principal del dashboard.
 
-2. ACCIONES RÁPIDAS (Row de 3 cards horizontales con ícono + texto):
-   [👤 Nuevo Cliente] [📋 Préstamo] [🧮 Simulador]
-   → context.push(AppRoutes.nuevoCliente)
-   → context.push(AppRoutes.nuevoPrestamo)
-   → context.push(AppRoutes.simulador)
+Necesito:
+- saludo por hora
+- capital disponible del usuario
+- tarjetas resumen
+- pagos recientes
+- próximos vencimientos
+- gráfica mensual
+- acciones rápidas de cliente, préstamo y simulador
 
-3. GRID 2x3 de StatCards (resumenFinancieroProvider):
-   - Interés del mes (suma de intereses cobrados en pagos del mes)
-   - Clientes activos (totalClientes de resumen)
-   - Préstamos activos
-   - Préstamos vencidos
-   - Cobrado este mes
-   - Saldo pendiente total
+Archivos esperados:
+- lib/screens/dashboard/dashboard_screen.dart
+- lib/widgets/
 
-4. Gráfica de barras, últimos pagos, próximos a vencer (igual que antes)
-
-5. NavigationBar de 6 destinos (igual que antes)
-6. SpeedDial FAB (igual que antes)
+Requisitos:
+- Usar datos del provider actual del usuario
+- Mostrar métricas con formato Q y fechas locales
+- Mantener estilo material consistente
 ```
 
-## PROMPT 0C — Simulador de préstamos
+---
 
-```
-Genera lib/screens/simulador/simulador_screen.dart para Capital Pro.
+## PROMPT 03 — Módulo de clientes
 
-CAMPOS DE ENTRADA:
-- Monto del préstamo (Q) — TextFormField numérico
-- Tasa de interés mensual (%) — default 7.0, editable
-- Plazo en meses — Slider 1 a 60 con texto del valor
-- Fecha del primer pago — InkWell que abre DatePicker (default: próximo mes día 1)
+```text
+Genera el flujo completo del módulo de clientes.
 
-PREVIEW EN TIEMPO REAL (se actualiza con onChanged/onChangeEnd):
-  Cuota mensual: Q X,XXX.XX
-  Total intereses: Q X,XXX.XX
-  Total a pagar: Q X,XXX.XX
+Debe incluir:
+- listado de clientes activos
+- historial de clientes inactivos
+- formulario con foto, nombre, apellido, teléfono, DPI y dirección
+- detalle del cliente con préstamos y pagos
+- búsquedas y filtros por estado
 
-BOTÓN: [Calcular tabla completa]
-→ Genera y muestra TablaAmortizacion(cuotas)
+Archivos esperados:
+- lib/screens/clientes/clientes_screen.dart
+- lib/screens/clientes/clientes_inactivos_screen.dart
+- lib/screens/clientes/form_cliente_screen.dart
+- lib/screens/clientes/detalle_cliente_screen.dart
 
-TABLA DE AMORTIZACIÓN (widget TablaAmortizacion):
-┌────┬────────────┬──────────┬──────────┬──────────┬──────────┐
-│ No.│ Fecha pago │  Cuota   │ Capital  │ Interés  │  Saldo   │
-├────┼────────────┼──────────┼──────────┼──────────┼──────────┤
-│  1 │ 01/Feb/25  │ Q 1,050  │ Q 800    │ Q 250    │ Q 4,200  │
-└────┴────────────┴──────────┴──────────┴──────────┴──────────┘
-Usar SingleChildScrollView horizontal + DataTable de Flutter
-
-BOTÓN al final de tabla: [Crear préstamo con estos datos]
-→ context.push('/prestamos/nuevo') pasando los datos como extra en go_router
-
-Usa CuotaPago.generarTabla() para calcular las cuotas.
-Usa AppFormatters.moneda(), AppFormatters.fechaCorta()
+Requisitos:
+- Formato de DPI guatemalteco
+- Teléfono con validación
+- Integrar providers y repositorios del proyecto
+- Mantener comportamiento de estado activo/inactivo
 ```
 
-## PROMPT 0D — Clientes activos e inactivos separados
+---
 
-```
-Genera el módulo de clientes separado por estado para Capital Pro.
+## PROMPT 04 — Módulo de préstamos
 
-1. lib/screens/clientes/clientes_screen.dart — ACTIVOS
-   - Tab superior o botón para ir a inactivos: "Ver historial de clientes"
-   - Lista solo de clientes con estado='activo'
-   - Búsqueda por nombre, apellido, teléfono, DPI
-   - ClienteAvatar + nombre + teléfono + número de préstamos activos
-   - Swipe derecha → WhatsApp con mensaje de saludo
-   - Swipe izquierda → ConfirmDialog → marcar como inactivo
-   - Tap → /clientes/:id
-   - FAB → /clientes/nuevo
-   - EmptyState con icono e instrucción si lista vacía
+```text
+Implementa el módulo de préstamos para Capital Pro.
 
-2. lib/screens/clientes/clientes_inactivos_screen.dart — HISTORIAL
-   - AppBar: "Historial de clientes"
-   - Lista de clientes con estado='inactivo' o 'finalizado'
-   - Badge de estado: "Finalizado" (verde) o "Inactivo" (gris)
-   - Tap → /clientes/:id (con historial completo de pagos)
-   - Botón "Nuevo préstamo" en detalle si estado='finalizado'
-   - EmptyState si no hay historial
+Incluye:
+- formulario de creación
+- confirmación antes de guardar
+- cálculo de cuota, intereses y vencimiento
+- detalle del préstamo
+- tabla de amortización
+- flujo de pago y saldo pendiente
 
-3. lib/screens/clientes/form_cliente_screen.dart — FORMULARIO
-   Campos:
-   - Foto circular (image_picker: cámara o galería)
-   - nombre* (Title Case onChanged)
-   - apellido* (Title Case onChanged)
-   - telefono* (FilteringTextInputFormatter.digitsOnly + max 8)
-   - telefono_referencia (opcional, 8 dígitos, "Número de referencia/familiar")
-   - dpi (DpiInputFormatter + validator 13 dígitos)
-   - email (opcional)
-   - direccion (opcional)
-   
-   Al guardar:
-   → CarpetaService.instance.generarPDFPerfil(cliente)
-   → WhatsAppService.enviarMensaje(tel, mensajeBienvenida, context)
-   → AppSnackBar.exito con "Cliente guardado. PDF generado."
-   → ref.invalidate(clientesProvider) + context.pop()
+Archivos esperados:
+- lib/screens/prestamos/form_prestamo_screen.dart
+- lib/screens/prestamos/prestamos_screen.dart
+- lib/screens/prestamos/detalle_prestamo_screen.dart
 
-4. lib/screens/clientes/detalle_cliente_screen.dart
-   TabBar con 3 tabs:
-   - "Info": avatar grande + todos los datos + botón WhatsApp
-   - "Préstamos": lista de PrestamoCard + FAB nuevo préstamo
-   - "Pagos": lista de PagoListTile + historial completo
-   
-   Si estado='finalizado' → banner verde "✓ Préstamo finalizado — Apto para nuevo crédito"
-   Si estado='inactivo'   → banner gris "Sin préstamos activos"
+Requisitos:
+- Tasa por defecto 7%
+- Validar monto, plazo y cliente
+- Usar cálculo de cuotas realista y persistencia local
 ```
 
-## PROMPT 0E — Préstamos con tasa 7% y BottomSheet de confirmación
+---
 
-```
-Genera el módulo de préstamos para Capital Pro.
+## PROMPT 05 — Módulo de pagos
 
-1. lib/screens/prestamos/form_prestamo_screen.dart
-   - Si clienteId en query → preseleccionar cliente
-   - Si datos precargados desde simulador → usar esos valores
-   
-   Campos:
-   - Cliente* (DropdownButtonFormField con búsqueda, filtra clientesProvider)
-   - Monto original* (numérico, AppValidators.monto)
-   - Tasa de interés* (numérico %, DEFAULT 7.0 — editable)
-   - Plazo* (Slider 1-60 meses + Text del valor actual)
-   - Fecha inicio* (DatePicker, default hoy)
-   - Garantía (opcional)
-   - Notas (opcional)
-   
-   PREVIEW EN TIEMPO REAL (Card que se actualiza):
-     Cuota mensual | Total intereses | Total a pagar | Fecha vencimiento
-   
-   Al presionar [Guardar préstamo]:
-   → Mostrar BottomSheet de CONFIRMACIÓN con:
-     Cliente, Monto, Tasa, Plazo
-     Cuota mensual, Total intereses, Total a pagar
-     Fecha inicio, Fecha vencimiento
-     [Cancelar] [Confirmar préstamo]
-   
-   Al confirmar:
-   → ref.read(prestamosProvider.notifier).crear(prestamo, cuotas)
-   → CarpetaService.generarPDFTablaPagos(cliente, prestamo, cuotas)
-   → WhatsAppService.enviarMensaje(tel, mensajePrestamoAprobado(...), context)
-   → AppSnackBar.exito "Préstamo creado. PDF generado."
-   → context.pop()
+```text
+Crea o modifica el flujo de pagos.
 
-2. lib/screens/prestamos/prestamos_screen.dart
-   Header: 3 StatCards (Total prestado | Activos | Vencidos)
-   FilterChips: Todos | Activos | Vencidos | Pagados
-   Lista con prestamosFiltradosProvider + PrestamoCard
-   FAB → /prestamos/nuevo
-   Pull to refresh
+Debe soportar:
+- registrar pago efectivo o transferencia
+- adjuntar comprobante de imagen
+- asociar cliente y préstamo
+- actualizar saldo de préstamo
+- marcar cuota pagada
+- generar recibo o finiquito
 
-3. lib/screens/prestamos/detalle_prestamo_screen.dart
-   AppBar + botón editar
-   Card resumen del préstamo con LinearProgressIndicator
-   TABLA DE CUOTAS completa (cuotasPrestamoProvider(id))
-   Usando DataTable o ListView con TablaAmortizacion widget
-   Botón "Registrar pago" → /pagos/nuevo?prestamoId=X&clienteId=Y
-   Banner rojo si vencido
-   Botón "Generar finiquito" si saldo = 0
+Archivos esperados:
+- lib/screens/pagos/pagos_screen.dart
+- lib/screens/pagos/form_pago_screen.dart
+- lib/screens/pagos/detalle_pago_screen.dart
+
+Requisitos:
+- Validar monto y fecha
+- Generar registro persistente en SQLite
+- Integrar WhatsApp o documento de comprobante si aplica
 ```
 
-## PROMPT 0F — Pagos con comprobante foto y WhatsApp automático
+---
 
+## PROMPT 06 — Simulador
+
+```text
+Crea o mejora el simulador de préstamos.
+
+Objetivo:
+- entrada de monto, tasa, plazo y fecha
+- cálculo en tiempo real de cuota y total
+- tabla de amortización
+- resumen financiero
+
+Archivos esperados:
+- lib/screens/simulador/simulador_screen.dart
+- lib/widgets/tabla_amortizacion.dart
+
+Requisitos:
+- Usar formato Q y fechas localizadas
+- Mantener cálculos consistentes con la lógica de pagos del proyecto
 ```
-Genera el módulo de pagos para Capital Pro.
 
-1. lib/screens/pagos/pagos_screen.dart
-   Header: 3 StatCards (Cobrado mes | Pendiente | Completados mes)
-   FilterChips: Todos | Pendiente | Completado | Cancelado
-   SearchBar por cliente o concepto
-   Lista con pagosFiltradosProvider + PagoListTile
-   Swipe para eliminar con ConfirmDialog
-   FAB → /pagos/nuevo
-   Pull to refresh
+---
 
-2. lib/screens/pagos/form_pago_screen.dart
-   Si clienteId en query → preseleccionar cliente
-   Si prestamoId en query → preseleccionar préstamo y cuota actual
-   
-   Campos:
-   - Cliente* (Dropdown, lista de clientesProvider)
-   - Préstamo (Dropdown opcional — filtra préstamos activos del cliente)
-   - Al seleccionar préstamo → mostrar cuota actual y saldo pendiente
-   - Monto* (numérico, default = cuota mensual si hay préstamo)
-   - Fecha* (DatePicker, default hoy)
-   
-   MÉTODO DE PAGO (SegmentedButton 2 opciones):
-   [💵 Efectivo]  [🏦 Transferencia/Depósito]
-   
-   Si Transferencia → mostrar:
-     "Comprobante de pago:" + botón imagen
-     → image_picker: cámara o galería
-     → preview circular de la imagen seleccionada
-   
-   - Concepto* (TextFormField, auto-fill "Cuota No. X" si hay préstamo)
-   - Notas (opcional)
-   
-   Al guardar:
-   → crear pago en DB
-   → si tiene prestamoId → PrestamoRepository.registrarPago(id, monto)
-   → marcar cuota en tabla_pagos como pagada
-   → CarpetaService.generarReciboPago(pago, cliente, cuota, prestamo)
-   → WhatsAppService.enviarMensaje(cliente.telefono, mensajeConfirmacion, ctx)
-   → si préstamo pagado → CarpetaService.generarFiniquito(cliente, prestamo)
-   → AppSnackBar con mensaje y botón "Compartir recibo"
-   → ref.invalidate(pagosProvider) + ref.invalidate(prestamosProvider)
-   → context.pop()
+## PROMPT 07 — Reportes y configuración
 
-3. lib/screens/pagos/detalle_pago_screen.dart
-   Card datos del pago
+```text
+Implementa o mejora reportes y configuración del sistema.
+
+Debe incluir:
+- métricas financieras por mes
+- resumen de clientes y préstamos
+- configuración del usuario
+- exportación/importación local de la base de datos
+
+Archivos esperados:
+- lib/screens/reportes/
+- lib/screens/configuracion/
+
+Requisitos:
+- Mantener compatibilidad con SQLite local
+- Documentar en UI cuando se exporta/importa información
+```
+
+---
+
+## PROMPT 08 — Optimización general
+
+```text
+Optimiza la app de Capital Pro sin romper la lógica existente.
+
+Prioridades:
+- limpieza de código
+- eliminar imports sin usar
+- mejorar validación y mensajes
+- revisar navegación y estados
+- mantener consistencia de estilo visual
+- asegurar compatibilidad con web/móvil si aplica
+```
    Si comprobante_path → mostrar imagen del comprobante
    Card datos del cliente
    Si tiene préstamo → Card resumen del préstamo

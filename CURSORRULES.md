@@ -1,63 +1,75 @@
-# .cursorrules — Capital Pro v2.0
-# Pega en archivo .cursorrules en la raíz del proyecto
-# Compatible: Cursor, Windsurf, Zed
+# .cursorrules — Capital Pro
+
+> Pega este contenido en un archivo `.cursorrules` en la raíz del proyecto.
 
 ## Proyecto
-App Flutter "Capital Pro" — gestión de préstamos para Guatemala.
-Moneda Q. Teléfonos 8 dígitos (+502). DPI 13 dígitos (XXXX-XXXXX-XXXX).
-Un solo dispositivo Android/iOS. SQLite local. Sin backend.
+App Flutter para gestión financiera local de préstamos en Guatemala.
 
-## Plataformas
-Android (minSdk 21, targetSdk 34) e iOS.
+- Idioma: español
+- Moneda: Q
+- Sin backend externo
+- Datos locales en SQLite
+- Navegación con Go Router
+- Estado con Riverpod
 
-## Reglas absolutas de código
+## Reglas de código
 
-### Colores — SIEMPRE AppColors
-primary, primaryLight, primaryDark, secondary
-success, error, warning, info
-background, surface, divider
-textPrimary, textSecondary, textHint, textOnPrimary
-efectivo, transferencia, pendiente, completado, cancelado, vencido, activo
+### UI y estilos
+- Usar `AppColors`, `AppStrings` y `AppTextStyles` siempre que existan.
+- Evitar `TextStyle(...)` directo en pantallas.
+- No hardcodear textos en la UI.
+- Mantener consistencia visual con Material Design.
 
-### Strings — SIEMPRE AppStrings, nunca hardcodeados en UI
-### Estilos — SIEMPRE AppTextStyles, nunca TextStyle(...)
-### if/else/for/while — SIEMPRE con llaves {}
-### TextFormField — SIEMPRE initialValue:, nunca value:
-### async — SIEMPRE con try/catch
-### context después de await — SIEMPRE if (mounted)
-### Imports sin usar — ELIMINAR
+### Lógica
+- Usar `try/catch` en operaciones async.
+- Antes de usar `context` después de un `await`, validar `if (mounted)`.
+- Mantener validaciones centralizadas en helpers/validators.
+- Eliminar imports no usados.
 
-### Title Case OBLIGATORIO para nombres
-Usuario.toTitleCase(input)    // usuarios
-Cliente.crear(...)            // clientes — aplica automáticamente
+### Nombres y datos
+- Usar nombres en español y consistentes con el dominio.
+- Formatear nombres con title case cuando aplique.
+- Validar teléfono y DPI según formato guatemalteco.
+- La tasa por defecto de préstamos es 7%.
 
-### DPI guatemalteco
-DpiInputFormatter()           // auto-formato XXXX-XXXXX-XXXX
-AppValidators.dpi(v)          // valida 13 dígitos
-AppFormatters.formatearDPI(s) // display formateado
+### Base de datos
+- El acceso principal va por `DatabaseHelper` y repositorios.
+- Si se toca SQLite en web, inicializar `databaseFactoryFfiWeb`.
+- No romper compatibilidad entre móvil y web.
 
-## Flujo de registro (3 pasos)
-Paso 1: nombre + teléfono + contraseña
-Paso 2: 2 preguntas de seguridad + respuestas (SHA-256)
-Paso 3: capital inicial en Q
-→ Siempre regresa al Login (NO auto-login)
+### Navegación
+- Preferir `go_router`.
+- Mantener rutas declaradas centralizadamente.
+- No hacer navegación sin contexto válido.
 
-## Nuevas rutas
-/simulador              → SimuladorScreen
-/recuperar-password     → RecuperarPasswordScreen
-/clientes/inactivos     → ClientesInactivosScreen
+## Módulos clave
+- auth
+- dashboard
+- clientes
+- prestamos
+- pagos
+- simulador
+- reportes
+- configuracion
 
-## Módulo pagos
-Métodos: 'efectivo' | 'transferencia'
-Transferencia → pide foto comprobante (image_picker)
-Al pagar → WhatsApp automático al cliente
-Al finalizar préstamo → PDF finiquito automático
-
-## Tasa interés default: 7% mensual
+## Flujo del negocio
+- Usuario registra cuenta y capital inicial.
+- Crea clientes.
+- Genera préstamos y tabla de cuotas.
+- Registra pagos por cuota o concepto.
+- Revisa dashboard y reportes con saldo real.
 
 ## Errores comunes a evitar
-- Siempre await DatabaseHelper en main() antes de runApp()
-- multiDexEnabled true en build.gradle
-- Todos los permisos en AndroidManifest.xml y Info.plist
-- FileProvider configurado para image_picker en Android
-- minSdkVersion 21
+- No abrir SQLite sin inicializar en web.
+- No mezclar lógica de UI con acceso a base de datos.
+- No duplicar validadores ni utilidades.
+- No dejar textos literales en pantallas.
+- No romper el flujo de autenticación ni la persistencia local.
+
+## Comandos válidos para validar
+```bash
+flutter analyze
+flutter test
+flutter run
+flutter run -d chrome --debug
+```

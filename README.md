@@ -1,68 +1,156 @@
-# Capital Pro — Guía de archivos de IA
+# Capital Pro
 
-## Archivos generados
+App Flutter para gestión de préstamos y pagos en Guatemala, diseñada para funcionar con SQLite local y flujo financiero de préstamos personales y comerciales.
 
-| Archivo | Para qué sirve | Cómo usarlo |
-|---------|---------------|-------------|
-| `CAPITAL_PRO_CONTEXT.md` | Contexto completo del proyecto | Pega al inicio de cada sesión |
-| `PROMPTS_POR_MODULO.md` | 8 prompts listos por módulo | Copia el prompt del módulo que necesitas |
-| `MCP_CONFIG.json` | Conecta Claude Desktop al proyecto | Sigue las instrucciones dentro del archivo |
-| `CURSORRULES.md` | Reglas para Cursor / Windsurf | Renombra a `.cursorrules` en raíz del proyecto |
+## Objetivo del proyecto
 
----
-
-## Flujo recomendado de trabajo
-
-### Con Claude (claude.ai o VS Code)
-```
-1. Abre una nueva sesión
-2. Adjunta o pega CAPITAL_PRO_CONTEXT.md
-3. Pega el prompt del módulo que necesitas (de PROMPTS_POR_MODULO.md)
-4. Claude genera el código siguiendo la arquitectura del proyecto
-```
-
-### Con ChatGPT
-```
-1. Pega el contenido completo de CAPITAL_PRO_CONTEXT.md
-2. Escribe "---" para separar
-3. Pega el prompt del módulo
-```
-
-### Con Gemini
-```
-1. Crea un proyecto en Gemini (menú izquierdo)
-2. Adjunta CAPITAL_PRO_CONTEXT.md como documento del proyecto
-3. Gemini lo tendrá como contexto permanente
-4. Solo pega el prompt del módulo en cada mensaje
-```
-
-### Con Cursor o Windsurf
-```
-1. Copia el contenido de CURSORRULES.md
-2. Crea un archivo .cursorrules en la raíz de capital_pro/
-3. Pega el contenido
-4. La IA del editor ya tiene el contexto automáticamente
-```
-
-### Con Claude Desktop + MCP (más poderoso)
-```
-1. Sigue las instrucciones en MCP_CONFIG.json
-2. Claude podrá leer y escribir archivos directamente
-3. Pídele: "Lee CAPITAL_PRO_CONTEXT.md y genera el módulo de Clientes
-   directamente en lib/screens/clientes/"
-```
+- Gestionar usuarios, clientes, préstamos y pagos.
+- Mantener datos en almacenamiento local.
+- Cubrir flujo completo de crédito: registro, simulador, préstamo, cobro y reportes.
+- Soportar uso en Android/iOS y, con ajustes especiales, en la web.
 
 ---
 
-## Orden sugerido de generación
+## Stack principal
 
+- Flutter
+- Dart
+- Riverpod para estado
+- Go Router para navegación
+- SQLite con sqflite
+- Material Design 3
+- PDF / impresión / WhatsApp / image picker / permisos
+
+## Estructura general
+
+```text
+lib/
+  constants/
+  helpers/
+  models/
+  providers/
+  repositories/
+  router/
+  screens/
+  services/
+  widgets/
+  main.dart
+web/
+  index.html
+  sqflite_sw.js
+  sqlite3.wasm
 ```
-Parte 1 ✅ → Estructura base (ya generada)
-Parte 2 ✅ → Modelos + repositorios + Auth screens
-Parte 3 ✅ → Auth mejorada + CarpetaService + Router 6 secciones
-Parte 4   → Widgets reutilizables + Dashboard
-Parte 5   → Módulo Clientes completo
-Parte 6   → Módulo Préstamos + tabla de amortización
-Parte 7   → Módulo Pagos + PDF automático + WhatsApp
-Parte 8   → Reportes + Configuración + respaldo DB
+
+## Módulos clave
+
+- Auth: login, registro, recuperación de contraseña
+- Dashboard: resumen financiero, métricas y alertas
+- Clientes: alta, detalle, historial e inactivos
+- Préstamos: formulario, detalle, cuotas y vencimientos
+- Pagos: registro de cuotas y comprobantes
+- Simulador: cálculo de amortización y cuotas
+- Reportes: indicadores y exportación
+- Configuración: ajustes del usuario y exportación/importación de datos
+
+---
+
+## Requisitos
+
+- Flutter SDK instalado
+- Android Studio / Xcode según plataforma
+- Chrome para validación web
+- Dependencias de pub actualizadas
+
+## Inicio rápido
+
+```bash
+flutter pub get
+flutter run
 ```
+
+Para navegador:
+
+```bash
+flutter run -d chrome --debug
+```
+
+## Configuración web para SQLite
+
+La app usa SQLite y en web requiere la inicialización correcta del factory web.
+
+### Requisitos
+
+```yaml
+dependencies:
+  sqflite: ^2.3.0
+  sqflite_common_ffi_web: ^1.0.0
+```
+
+### Setup recomendado
+
+```bash
+dart run sqflite_common_ffi_web:setup
+```
+
+Esto genera los archivos necesarios en la carpeta web:
+
+- `web/sqflite_sw.js`
+- `web/sqlite3.wasm`
+
+Y en la app se inicializa así:
+
+```dart
+if (kIsWeb) {
+  databaseFactory = databaseFactoryFfiWeb;
+}
+```
+
+---
+
+## Flujo recomendado para trabajar con IA
+
+### 1) Contexto base
+Adjunta o pega el contenido de `CAPITAL_PRO_CONTEXT.md` al inicio de la sesión.
+
+### 2) Prompts por módulo
+Usa los prompts de `PROMPTS_POR_MODULO.md` para pedir cambios específicos por área.
+
+### 3) Reglas de editor
+Si usas Cursor/Windsurf, copia el contenido de `CURSORRULES.md` a un archivo `.cursorrules` en la raíz del proyecto.
+
+### 4) Ejemplo de uso
+
+```text
+Lee CAPITAL_PRO_CONTEXT.md, luego genera el módulo de clientes con:
+- pantalla de listado
+- detalle del cliente
+- formulario
+- filtros por estado
+```
+
+---
+
+## Comandos útiles
+
+```bash
+flutter analyze
+flutter test
+flutter run -d chrome --debug
+```
+
+## Archivos importantes
+
+| Archivo | Uso |
+|---|---|
+| `CAPITAL_PRO_CONTEXT.md` | Contexto general del proyecto |
+| `PROMPTS_POR_MODULO.md` | Prompts listos por módulo |
+| `CURSORRULES.md` | Reglas para asistentes y editores |
+| `MCP_CONFIG.json` | Integración con Claude Desktop y MCP |
+
+---
+
+## Recomendación de mantenimiento
+
+- Mantener documentación actualizada al cambiar pantallas o rutas.
+- Actualizar el contexto de IA cuando agregues módulos nuevos.
+- Revisar el README y el contexto una vez al mes para mantener coherencia.

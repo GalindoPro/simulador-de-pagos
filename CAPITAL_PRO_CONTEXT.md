@@ -1,30 +1,29 @@
-# Capital Pro — Contexto completo del proyecto v2.0
+# Capital Pro — contexto técnico y de producto
 
-> **Compatible con:** Claude, ChatGPT, Gemini, GitHub Copilot, Cursor, Windsurf
-> **Versión:** 2.0 — Parte 4 completa
+> Proyecto Flutter para gestión financiera local de préstamos en Guatemala.
+> Compatible con Claude, ChatGPT, GitHub Copilot, Cursor y Windsurf.
 
----
+## 1. Visión general
 
-## ¿Qué es Capital Pro?
+Capital Pro es una aplicación de gestión interna para prestamistas que permite:
 
-App Flutter de gestión financiera para prestamistas en Guatemala.
-Un solo dispositivo Android/iOS. SQLite local. Sin backend.
+- registrar usuarios y clientes
+- crear préstamos con tasas e intereses
+- registrar pagos y cuotas
+- ver resumen financiero por usuario
+- exportar/importar datos locales
+- generar PDFs y compartir información por WhatsApp
 
-- **Moneda:** Quetzales (Q)
-- **Teléfonos:** 8 dígitos, código país +502
-- **DPI:** 13 dígitos, formato XXXX-XXXXX-XXXX (ej: 3274-32047-1405)
-- **Idioma UI:** Español
-- **Plataformas:** Android e iOS
-
----
-
-## Stack técnico
+## 2. Stack tecnológico
 
 ```yaml
 dependencies:
+  flutter:
+    sdk: flutter
   flutter_riverpod: ^2.4.0
   go_router: ^12.0.0
   sqflite: ^2.3.0
+  sqflite_common_ffi_web: ^1.0.0
   path: ^1.9.0
   path_provider: ^2.1.0
   crypto: ^3.0.3
@@ -38,186 +37,140 @@ dependencies:
   pdf: ^3.11.3
   printing: ^5.14.2
   fl_chart: ^0.66.0
-  flutter_speed_dial: ^7.0.0
   permission_handler: ^11.3.0
 ```
 
----
+## 3. Arquitectura
 
-## Base de datos — SQL completo v2
+### Patrón general
 
-```sql
-CREATE TABLE usuarios (
-  id             TEXT PRIMARY KEY,
-  nombre         TEXT NOT NULL,
-  telefono       TEXT UNIQUE NOT NULL,
-  password_hash  TEXT NOT NULL,
-  capital_inicial REAL NOT NULL DEFAULT 0,
-  activo         INTEGER DEFAULT 1,
-  fecha_registro TEXT NOT NULL
-);
+- UI: widgets en `lib/screens`
+- Lógica de estado: `lib/providers`
+- Acceso a datos: `lib/repositories` y `lib/services`
+- Modelos: `lib/models`
+- Utilidades: `lib/helpers`
+- Navegación: `lib/router`
 
-CREATE TABLE preguntas_seguridad (
-  id             TEXT PRIMARY KEY,
-  usuario_id     TEXT NOT NULL,
-  pregunta       TEXT NOT NULL,
-  respuesta_hash TEXT NOT NULL,
-  FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
-);
+### Enfoque de negocio
 
-CREATE TABLE clientes (
-  id                  TEXT PRIMARY KEY,
-  nombre              TEXT NOT NULL,
-  apellido            TEXT NOT NULL,
-  telefono            TEXT NOT NULL,
-  telefono_referencia TEXT,
-  email               TEXT,
-  direccion           TEXT,
-  dpi                 TEXT,
-  foto_path           TEXT,
-  fecha_registro      TEXT NOT NULL,
-  estado              TEXT DEFAULT 'activo',
-  activo              INTEGER DEFAULT 1
-);
+La aplicación es local y monolítica por almacenamiento, sin backend externo. El flujo principal es:
 
-CREATE TABLE prestamos (
-  id                TEXT PRIMARY KEY,
-  cliente_id        TEXT NOT NULL,
-  monto_original    REAL NOT NULL,
-  tasa_interes      REAL NOT NULL DEFAULT 7.0,
-  plazo_meses       INTEGER NOT NULL,
-  fecha_inicio      TEXT NOT NULL,
-  fecha_vencimiento TEXT NOT NULL,
-  saldo_pendiente   REAL NOT NULL,
-  estado            TEXT DEFAULT 'activo',
-  garantia          TEXT,
-  notas             TEXT,
-  registrado_por    TEXT,
-  fecha_creacion    TEXT NOT NULL,
-  FOREIGN KEY (cliente_id) REFERENCES clientes(id)
-);
+1. Registro/login del usuario
+2. Registrar clientes
+3. Crear préstamo
+4. Generar tabla de cuotas
+5. Registrar pagos
+6. Revisar dashboard y reportes
 
-CREATE TABLE pagos (
-  id               TEXT PRIMARY KEY,
-  cliente_id       TEXT NOT NULL,
-  prestamo_id      TEXT,
-  cuota_numero     INTEGER,
-  monto            REAL NOT NULL,
-  fecha            TEXT NOT NULL,
-  metodo_pago      TEXT NOT NULL,
-  comprobante_path TEXT,
-  concepto         TEXT NOT NULL,
-  estado           TEXT DEFAULT 'completado',
-  notas            TEXT,
-  pdf_path         TEXT,
-  registrado_por   TEXT,
-  fecha_creacion   TEXT NOT NULL,
-  FOREIGN KEY (cliente_id) REFERENCES clientes(id),
-  FOREIGN KEY (prestamo_id) REFERENCES prestamos(id)
-);
+## 4. Entorno de datos
 
-CREATE TABLE tabla_pagos (
-  id           TEXT PRIMARY KEY,
-  prestamo_id  TEXT NOT NULL,
-  cuota_numero INTEGER NOT NULL,
-  fecha_pago   TEXT NOT NULL,
-  capital      REAL NOT NULL,
-  interes      REAL NOT NULL,
-  total_cuota  REAL NOT NULL,
-  saldo        REAL NOT NULL,
-  pagado       INTEGER DEFAULT 0,
-  fecha_pagado TEXT,
-  FOREIGN KEY (prestamo_id) REFERENCES prestamos(id)
-);
-```
+### Base de datos principal
 
----
+La app usa SQLite con una base local llamada `capital_pro.db`.
 
-## Flujo de registro (3 pasos)
+Tablas principales:
 
-```
-PASO 1 — Datos de acceso
-  nombre (Title Case auto) + teléfono + contraseña + confirmar
+- `usuarios`
+- `preguntas_seguridad`
+- `clientes`
+- `prestamos`
+- `pagos`
+- `tabla_pagos`
 
-PASO 2 — Preguntas de seguridad
-  Pregunta 1 (seleccionar de lista) + respuesta
-  Pregunta 2 (seleccionar de lista) + respuesta
+### Convenciones
 
-PASO 3 — Capital inicial
-  "¿Cuánto capital tiene disponible para prestar?" (Q)
-  Nota: "Puedes cambiarlo después en Configuración"
+- Moneda: Quetzales (Q)
+- Teléfonos: 8 dígitos, sin prefijo fijo en UI
+- DPI: formato `XXXX-XXXXX-XXXX`
+- Idioma: español
+- Fechas: ISO/locale local con `intl`
 
-→ Registro exitoso → regresar al Login (NO auto-login)
-```
+## 5. Reglas de negocio importantes
 
-### Preguntas de seguridad disponibles
+- Cada usuario tiene su propio contexto de datos
+- Los clientes pueden quedar activos o inactivos
+- Los préstamos tienen estado activo, vencido o pagado
+- Los pagos requieren validar monto, concepto y fecha
+- El módulo de simulador debe reflejar tabla de amortización real
+
+## 6. Flujo principal del usuario
+
+### Registro
+
+1. Datos básicos: nombre, teléfono, contraseña
+2. Seguridad: 2 preguntas + respuestas
+3. Capital inicial
+4. Volver al login
+
+### Recuperación de contraseña
+
+- teléfono
+- respuesta a pregunta 1
+- respuesta a pregunta 2
+- nueva contraseña
+
+### Dashboard
+
+- saludo + saldo disponible
+- tarjetas de resumen
+- pagos recientes
+- próximos vencimientos
+- gráfico de flujo mensual
+
+## 7. Consideraciones para web
+
+La versión web necesita inicializar la fábrica SQLite correcta antes de abrir la base:
+
 ```dart
-const kPreguntasSeguridad = [
-  '¿Cuál es el nombre de tu primera mascota?',
-  '¿En qué ciudad naciste?',
-  '¿Cuál es el nombre de tu madre?',
-  '¿Cuál es tu apodo de infancia?',
-  '¿Cuál fue el nombre de tu primera escuela?',
-  '¿Cuál es el nombre de tu mejor amigo de infancia?',
-];
+import 'package:sqflite/sqflite.dart';
+import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+
+if (kIsWeb) {
+  databaseFactory = databaseFactoryFfiWeb;
+}
 ```
 
----
+Además se requieren los archivos:
 
-## Flujo de recuperación de contraseña
+- `web/sqflite_sw.js`
+- `web/sqlite3.wasm`
 
-```
-Login → "¿Olvidaste tu contraseña?" → /recuperar-password
-  1. Ingresa teléfono registrado
-  2. Responde pregunta de seguridad 1
-  3. Responde pregunta de seguridad 2
-  4. Nueva contraseña + confirmar
-  → SnackBar éxito → Login
+Generados con:
+
+```bash
+dart run sqflite_common_ffi_web:setup
 ```
 
----
+## 8. Comandos útiles
 
-## Dashboard — pantalla Inicio
-
-```
-HEADER (collapsible SliverAppBar):
-  Saludo según hora + nombre usuario
-  Capital disponible: Q XX,XXX.XX
-  Fecha actual
-
-ACCIONES RÁPIDAS (Row de 3 botones):
-  [+ Nuevo Cliente]  [+ Préstamo]  [Simulador]
-
-GRID 2x3 de StatCards:
-  Interés del mes | Clientes activos
-  Préstamos activos | Vencidos
-  Cobrado este mes | Saldo pendiente
-
-GRÁFICA DE BARRAS (fl_chart):
-  Cobros por mes — últimos 6 meses
-
-SECCIÓN Últimos pagos → [Ver todos]
-SECCIÓN Próximos a vencer → [Ver todos]
+```bash
+flutter pub get
+flutter analyze
+flutter test
+flutter run
+flutter run -d chrome --debug
 ```
 
----
+## 9. Instrucciones para asistentes de IA
 
-## Simulador de préstamos (/simulador)
+- Mantener en español
+- Usar tipos y nombres consistentes con el proyecto
+- Preferir `AppColors`, `AppStrings`, `AppTextStyles` y validadores centralizados
+- Evitar hardcodear textos en pantallas
+- Si se toca SQLite, validar compatibilidad web y móvil
+- Mantener flujo de navegación con `go_router`
 
-```
-INPUTS:
-  Monto (Q)
-  Tasa interés mensual (% — default 7%)
-  Plazo (Slider 1-60 meses)
-  Fecha primer pago (DatePicker)
+## 10. Archivos clave
 
-RESULTADO — tabla completa:
-  No. | Fecha pago | Cuota | Capital | Interés | Saldo
+- `lib/main.dart`
+- `lib/services/database_helper.dart`
+- `lib/router/app_router.dart`
+- `lib/providers/*`
+- `lib/repositories/*`
+- `lib/screens/*`
+- `lib/models/*`
 
-RESUMEN debajo:
-  Total a pagar | Total intereses | Cuota mensual
-
-BOTÓN: [Crear préstamo con estos datos]
+> Este documento debe usarse como base contextual para cualquier agente de IA que trabaje en el proyecto.
   → Navega a /prestamos/nuevo con datos precargados
 ```
 
